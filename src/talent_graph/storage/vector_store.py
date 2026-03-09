@@ -11,10 +11,15 @@ async def upsert_embedding(
     person_id: str,
     vec: list[float],
 ) -> None:
-    """Store or replace the embedding for a person."""
-    await session.execute(
-        update(Person).where(Person.id == person_id).values(embedding=vec)
+    """Store or replace the embedding for a person.
+
+    Raises ValueError if the person does not exist (data drift guard).
+    """
+    result = await session.execute(
+        update(Person).where(Person.id == person_id).values(embedding=vec).returning(Person.id)
     )
+    if result.scalar_one_or_none() is None:
+        raise ValueError(f"Person {person_id!r} not found — cannot store embedding")
 
 
 async def search_similar(

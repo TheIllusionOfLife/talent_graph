@@ -54,8 +54,10 @@ def compute_growth(recent_paper_count: int, total_paper_count: int, years_active
     total = max(total_paper_count, recent_paper_count)
     recency_ratio = recent_paper_count / total
 
-    # Velocity bonus: absolute recent output (log-damped)
-    velocity = math.log1p(recent_paper_count) / math.log1p(20)  # 20 = high ceiling
+    # Annual velocity: normalize by career length to detect acceleration.
+    # Ceiling: 5 papers/year is considered high output.
+    annual_velocity = recent_paper_count / max(years_active, 1)
+    velocity = math.log1p(annual_velocity) / math.log1p(5)
 
     return min(1.0, 0.6 * recency_ratio + 0.4 * velocity)
 

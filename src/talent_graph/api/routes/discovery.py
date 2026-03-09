@@ -105,52 +105,41 @@ def _recent_papers(papers: list) -> int:
     return sum(1 for p in papers if p.publication_year and p.publication_year >= cutoff)
 
 
-async def _build_seed_text(entity_type: str, entity_id: str) -> str:
-    """Fetch seed entity from Postgres and build an embedding query text."""
+async def _resolve_seed(
+    entity_type: str, entity_id: str
+) -> tuple[str | None, str]:
+    """Single DB round-trip: return (neo4j_key, embedding_text) for the seed entity."""
     async with get_db_session() as session:
         if entity_type == "paper":
             row = await session.get(Paper, entity_id)
             if row is None:
-                return ""
-            return build_query_text(f"{row.title} {' '.join(row.concepts or [])}")
+                return None, ""
+            text = build_query_text(f"{row.title} {' '.join(row.concepts or [])}")
+            return row.openalex_work_id, text
 
         if entity_type == "person":
             result = await session.execute(
-                select(Person).options(selectinload(Person.papers), selectinload(Person.org))
+                select(Person)
+                .options(selectinload(Person.papers), selectinload(Person.org))
                 .where(Person.id == entity_id)
             )
             row = result.scalar_one_or_none()
             if row is None:
-                return ""
-            return build_person_text(
+                return None, ""
+            text = build_person_text(
                 name=row.name,
                 org_name=row.org.name if row.org else None,
                 paper_titles=[p.title for p in row.papers],
             )
+            return row.id, text
 
         if entity_type == "concept":
             row = await session.get(Concept, entity_id)
             if row is None:
-                return ""
-            return build_query_text(row.name)
+                return None, ""
+            return row.openalex_concept_id, build_query_text(row.name)
 
-    return ""
-
-
-async def _get_neo4j_seed_id(entity_type: str, entity_id: str) -> str | None:
-    """Resolve Postgres ULID to the Neo4j node key used for graph traversal."""
-    async with get_db_session() as session:
-        if entity_type == "paper":
-            row = await session.get(Paper, entity_id)
-            return row.openalex_work_id if row else None
-        if entity_type == "person":
-            # Person's Neo4j key is its ULID (person_id)
-            row = await session.get(Person, entity_id)
-            return row.id if row else None
-        if entity_type == "concept":
-            row = await session.get(Concept, entity_id)
-            return row.openalex_concept_id if row else None
-    return None
+    return None, ""
 
 
 # ── Route ───────────────────────────────────────────────────────────────────
@@ -170,10 +159,8 @@ async def discover_candidates(
     if entity_type not in _QUERY_MAP:
         raise HTTPException(status_code=400, detail=f"Unknown entity_type: {entity_type}")
 
-    # 1. Resolve seed to Neo4j key and build embedding text
-    neo4j_seed_id, seed_text = await _get_neo4j_seed_id(
-        entity_type, entity_id
-    ), await _build_seed_text(entity_type, entity_id)
+    # 1. Resolve seed (single DB round-trip)
+    neo4j_seed_id, seed_text = await _resolve_seed(entity_type, entity_id)
 
     if neo4j_seed_id is None:
         raise HTTPException(status_code=404, detail="Seed entity not found")
@@ -224,10 +211,12 @@ async def discover_candidates(
         papers = person.papers or []
         total_citations = sum(p.citation_count for p in papers)
         recent_count = _recent_papers(papers)
-        years_active = max(
+        # Use earliest publication year as career start to compute career length
+        first_year = min(
             (p.publication_year for p in papers if p.publication_year),
             default=_CURRENT_YEAR,
         )
+        years_active = max(1, _CURRENT_YEAR - first_year + 1)
 
         # Semantic similarity: use candidate's stored embedding vs query_vec
         if person.embedding:

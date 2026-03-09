@@ -1,4 +1,4 @@
-"""POST /search — embed query and return ANN-ranked persons."""
+"""GET /search — embed query and return ANN-ranked persons."""
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -23,9 +23,9 @@ class SearchResponse(BaseModel):
     results: list[SearchResult]
 
 
-@router.post("", response_model=SearchResponse, dependencies=[Depends(require_api_key)])
+@router.get("", response_model=SearchResponse, dependencies=[Depends(require_api_key)])
 async def search_persons(
-    q: str = Query(..., min_length=1, description="Free-text search query"),
+    q: str = Query(..., min_length=1, max_length=2048, description="Free-text search query"),
     limit: int = Query(default=20, ge=1, le=100),
 ) -> SearchResponse:
     """Embed the query and return persons ranked by cosine similarity."""
