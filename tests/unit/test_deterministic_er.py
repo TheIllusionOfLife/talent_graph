@@ -9,10 +9,15 @@ from talent_graph.normalize.common_schema import PersonRecord
 
 
 def _make_session(scalar_result: str | None) -> AsyncMock:
-    """Return a mock AsyncSession that returns scalar_result from execute()."""
+    """Return a mock AsyncSession that returns scalar_result from execute().
+
+    Handles both scalar_one_or_none() (used by most lookups) and
+    scalars().first() (used by the email lookup to avoid MultipleResultsFound).
+    """
     session = AsyncMock()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = scalar_result
+    mock_result.scalars.return_value.first.return_value = scalar_result
     session.execute.return_value = mock_result
     return session
 

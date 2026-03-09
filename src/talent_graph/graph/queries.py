@@ -49,16 +49,6 @@ SET o.org_id = $org_id,
 RETURN o.openalex_institution_id AS openalex_institution_id
 """
 
-MERGE_REPO = """
-MERGE (r:Repo {full_name: $full_name})
-SET r.repo_id = $repo_id,
-    r.description = $description,
-    r.language = $language,
-    r.stars = $stars,
-    r.updated_at = timestamp()
-RETURN r.full_name AS full_name
-"""
-
 # ─── Relationship upserts ──────────────────────────────────────────────────────
 
 MERGE_AUTHORED = """

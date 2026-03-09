@@ -22,9 +22,9 @@ from talent_graph.entity_resolution.heuristic import (
     is_auto_merge,
     is_queue_candidate,
 )
-from talent_graph.normalize.common_schema import PersonRecord
+from talent_graph.normalize.common_schema import OrgRecord, PersonRecord
 from talent_graph.storage.id_gen import new_id
-from talent_graph.storage.models import EntityLink, Person
+from talent_graph.storage.models import EntityLink, Org, Person
 
 log = structlog.get_logger()
 
@@ -35,19 +35,32 @@ _HEURISTIC_CANDIDATE_LIMIT = 500
 async def _find_heuristic_match(
     session: AsyncSession,
     person: PersonRecord,
+    exclude_id: str | None = None,
 ) -> tuple[str | None, float]:
     """Return (best_candidate_id, confidence) from heuristic comparison.
 
     Does NOT write to DB — call write_heuristic_links() after upsert.
+    Fetches org name via join so compute_heuristic_confidence uses all signals.
+    Pass exclude_id to prevent self-matching after upsert.
     """
-    result = await session.execute(select(Person.id, Person.name).limit(_HEURISTIC_CANDIDATE_LIMIT))
+    query = (
+        select(Person.id, Person.name, Org.name.label("org_name"))
+        .outerjoin(Org, Person.org_id == Org.id)
+        .order_by(Person.id)
+        .limit(_HEURISTIC_CANDIDATE_LIMIT)
+    )
+    if exclude_id:
+        query = query.where(Person.id != exclude_id)
+
+    result = await session.execute(query)
     rows = result.all()
 
     best_id: str | None = None
     best_conf: float = 0.0
 
     for row in rows:
-        candidate = PersonRecord(name=row.name)
+        candidate_org = OrgRecord(name=row.org_name) if row.org_name else None
+        candidate = PersonRecord(name=row.name, org=candidate_org)
         conf = compute_heuristic_confidence(person, candidate, concepts_a=[], concepts_b=[])
         if conf > best_conf:
             best_conf = conf
@@ -98,7 +111,9 @@ async def write_heuristic_links(
     if not person.canonical_person_id:
         return
 
-    best_id, best_conf = await _find_heuristic_match(session, person)
+    best_id, best_conf = await _find_heuristic_match(
+        session, person, exclude_id=person.canonical_person_id
+    )
 
     if best_id and is_queue_candidate(best_conf) and best_id != person.canonical_person_id:
         id_a, id_b = sorted([person.canonical_person_id, best_id])

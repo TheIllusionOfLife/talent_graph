@@ -1,10 +1,14 @@
 """Admin endpoints — all require API key."""
 
+import re
+
 from fastapi import APIRouter, BackgroundTasks, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from talent_graph.api.deps import require_api_key
 from talent_graph.ingestion.jobs import ingest_github, ingest_openalex
+
+_SLUG_RE = re.compile(r"^[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+$")
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_api_key)])
 
@@ -24,6 +28,17 @@ class GitHubIngestRequest(BaseModel):
         description="List of 'owner/repo' slugs to ingest.",
         min_length=1,
     )
+
+    @field_validator("repos", mode="before")
+    @classmethod
+    def validate_slugs(cls, v: list[str]) -> list[str]:
+        for slug in v:
+            if not _SLUG_RE.match(slug):
+                raise ValueError(
+                    f"Invalid repo slug {slug!r}. Expected format: 'owner/repo' "
+                    "(alphanumeric, hyphens, underscores, dots only)."
+                )
+        return v
 
 
 @router.post("/ingest/openalex", response_model=IngestResponse)

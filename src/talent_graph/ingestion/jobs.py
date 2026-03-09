@@ -149,10 +149,15 @@ async def ingest_github(
             raw_repo = await gh.get_repo(owner, repo_name)
             raw_contributors = await gh.get_contributors(owner, repo_name, exclude_bots=True)
 
-            # Fetch user profiles for contributors (owner + contributors)
+            # Fetch user profiles for contributors (owner + contributors).
+            # Skip the owner if it is a GitHub Organization — org accounts are not Person nodes.
+            owner_type = (raw_repo.get("owner") or {}).get("type", "User")
             contributor_logins = [c["login"] for c in raw_contributors]
+            logins_to_fetch: set[str] = set(contributor_logins)
+            if owner_type != "Organization":
+                logins_to_fetch.add(owner)
             raw_users: dict[str, dict] = {}
-            for login in set([owner] + contributor_logins):
+            for login in logins_to_fetch:
                 try:
                     raw_users[login] = await gh.get_user(login)
                 except Exception:

@@ -66,10 +66,12 @@ async def resolve_deterministic(session: AsyncSession, person: PersonRecord) -> 
             if found := result.scalar_one_or_none():
                 return found
 
-    # 4. Email match
+    # 4. Email match (email has no unique constraint — use first() to avoid MultipleResultsFound)
     if person.email:
-        result = await session.execute(select(Person.id).where(Person.email == person.email))
-        if found := result.scalar_one_or_none():
+        result = await session.execute(
+            select(Person.id).where(Person.email == person.email).limit(1)
+        )
+        if found := result.scalars().first():
             return found
 
     return None
