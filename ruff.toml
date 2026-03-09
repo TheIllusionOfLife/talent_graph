@@ -17,6 +17,7 @@ select = [
 ignore = [
     "E501",   # line too long (handled by formatter)
     "ANN401", # Dynamically typed expressions (Any) are disallowed
+    "B008",   # FastAPI Query/Depends in argument defaults is the standard pattern
 ]
 
 [lint.per-file-ignores]
