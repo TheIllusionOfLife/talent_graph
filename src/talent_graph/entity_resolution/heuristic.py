@@ -15,6 +15,8 @@ _W_NAME = 0.60
 _W_ORG = 0.20
 _W_CONCEPT = 0.20
 
+# TODO: Use these thresholds in _find_heuristic_match to short-circuit candidates
+# with very low name similarity before computing the full weighted confidence score.
 _NAME_THRESHOLD = 0.92
 _ORG_THRESHOLD = 0.85
 _AUTO_MERGE_THRESHOLD = 0.80

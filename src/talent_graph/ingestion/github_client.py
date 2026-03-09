@@ -52,14 +52,28 @@ class GitHubClient:
         per_page: int = 100,
         exclude_bots: bool = False,
     ) -> list[dict[str, Any]]:
-        """Fetch top contributors for a repository."""
-        data: list[dict[str, Any]] = await self._get(
-            f"/repos/{owner}/{repo}/contributors",
-            params={"per_page": per_page, "anon": "false"},
-        )
+        """Fetch ALL contributors for a repository (paginated).
+
+        Loops through pages until an empty page is returned or the page has
+        fewer items than per_page, then applies the optional bot filter.
+        """
+        all_data: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            page_data: list[dict[str, Any]] = await self._get(
+                f"/repos/{owner}/{repo}/contributors",
+                params={"per_page": per_page, "anon": "false", "page": page},
+            )
+            if not page_data:
+                break
+            all_data.extend(page_data)
+            if len(page_data) < per_page:
+                break
+            page += 1
+
         if exclude_bots:
-            data = [c for c in data if c.get("type", "").lower() != "bot"]
-        return data
+            all_data = [c for c in all_data if c.get("type", "").lower() != "bot"]
+        return all_data
 
     async def get_user(self, username: str) -> dict[str, Any]:
         """Fetch a GitHub user's public profile."""

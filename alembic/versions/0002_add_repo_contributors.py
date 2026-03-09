@@ -21,7 +21,7 @@ def upgrade() -> None:
         "repo_contributors",
         sa.Column("repo_id", sa.String(36), sa.ForeignKey("repos.id"), primary_key=True),
         sa.Column("person_id", sa.String(36), sa.ForeignKey("persons.id"), primary_key=True),
-        sa.Column("contributions", sa.Integer, default=0),
+        sa.Column("contributions", sa.Integer, server_default=sa.text("0"), nullable=False),
     )
 
 

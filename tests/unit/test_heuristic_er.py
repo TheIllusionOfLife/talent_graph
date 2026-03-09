@@ -16,8 +16,8 @@ def test_name_similarity_identical() -> None:
 
 
 def test_name_similarity_high_jaro_winkler() -> None:
-    # Very similar names should be >= 0.92
-    score = compute_name_similarity("Yoshua Bengio", "Yoshua Bengio")
+    # Near-identical names (middle initial variant) should score >= 0.92
+    score = compute_name_similarity("Geoffrey Hinton", "Geoffrey E. Hinton")
     assert score >= 0.92
 
 
@@ -38,10 +38,11 @@ def test_org_similarity_identical() -> None:
     assert compute_org_similarity("MIT", "MIT") == pytest.approx(1.0)
 
 
-def test_org_similarity_high() -> None:
+def test_org_similarity_low_for_acronym_vs_full_name() -> None:
     score = compute_org_similarity("Massachusetts Institute of Technology", "MIT")
-    # These are quite different strings, so sim should be low
+    # Acronym vs full name — below the 0.85 org-match threshold, should not auto-match
     assert isinstance(score, float)
+    assert score < 0.85
 
 
 def test_org_similarity_both_none() -> None:

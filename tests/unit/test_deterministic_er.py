@@ -62,9 +62,13 @@ async def test_normalizes_orcid_url_to_bare_id() -> None:
     session = _make_session(None)
     person = PersonRecord(name="Alice", orcid="https://orcid.org/0000-0001-2345-6789")
     await resolve_deterministic(session, person)
-    # Should query with bare ORCID, not full URL
+    # The ORCID query must use the bare ID, not the full URL
     call_args = session.execute.call_args_list
-    assert call_args  # at least one DB query was made
+    assert call_args, "Expected at least one DB query"
+    first_stmt = call_args[0][0][0]
+    param_values = list(first_stmt.compile().params.values())
+    assert "0000-0001-2345-6789" in param_values, f"Bare ORCID not found in params: {param_values}"
+    assert not any("orcid.org" in str(v) for v in param_values), "Full ORCID URL leaked into query"
 
 
 @pytest.mark.asyncio

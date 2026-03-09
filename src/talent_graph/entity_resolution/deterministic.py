@@ -6,7 +6,7 @@ All matches carry confidence = 1.0. Returns an existing canonical_person_id or N
 
 import re
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from talent_graph.normalize.common_schema import PersonRecord
@@ -50,19 +50,21 @@ async def resolve_deterministic(session: AsyncSession, person: PersonRecord) -> 
             if found := result.scalar_one_or_none():
                 return found
 
-    # 2. Direct github_login match
+    # 2. Direct github_login match (case-insensitive — GitHub logins are case-insensitive)
     if person.github_login:
         result = await session.execute(
-            select(Person.id).where(Person.github_login == person.github_login)
+            select(Person.id).where(func.lower(Person.github_login) == person.github_login.lower())
         )
         if found := result.scalar_one_or_none():
             return found
 
-    # 3. GitHub URL in OpenAlex homepage
+    # 3. GitHub URL in OpenAlex homepage (case-insensitive login match)
     if person.homepage:
         login = _extract_github_login(person.homepage)
         if login:
-            result = await session.execute(select(Person.id).where(Person.github_login == login))
+            result = await session.execute(
+                select(Person.id).where(func.lower(Person.github_login) == login.lower())
+            )
             if found := result.scalar_one_or_none():
                 return found
 

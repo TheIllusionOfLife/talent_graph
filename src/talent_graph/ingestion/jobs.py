@@ -143,7 +143,15 @@ async def ingest_github(
 
     async with GitHubClient(token=settings.github_token) as gh:
         for repo_slug in repos:
+            if "/" not in repo_slug:
+                log.warning("github.repo.invalid_slug", slug=repo_slug, reason="missing '/'")
+                continue
             owner, repo_name = repo_slug.split("/", 1)
+            if not owner or not repo_name:
+                log.warning(
+                    "github.repo.invalid_slug", slug=repo_slug, reason="empty owner or repo"
+                )
+                continue
 
             # 1. Fetch raw data
             raw_repo = await gh.get_repo(owner, repo_name)
@@ -160,8 +168,8 @@ async def ingest_github(
             for login in logins_to_fetch:
                 try:
                     raw_users[login] = await gh.get_user(login)
-                except Exception:
-                    log.warning("github.user.fetch_failed", login=login)
+                except Exception as exc:
+                    log.warning("github.user.fetch_failed", login=login, error=str(exc))
 
             # 2. Save raw JSON
             store.save("github", "repos", repo_slug.replace("/", "_"), raw_repo)

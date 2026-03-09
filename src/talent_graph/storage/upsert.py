@@ -180,7 +180,13 @@ async def upsert_repo(
     owner_person_id: str | None = None,
     owner_org_id: str | None = None,
 ) -> str:
-    """Upsert repo by full_name. Returns the repo's PK."""
+    """Upsert repo by full_name. Returns the repo's PK.
+
+    Raises ValueError if full_name is empty — ON CONFLICT on NULL/empty never
+    fires in PostgreSQL, causing phantom duplicates on re-ingest.
+    """
+    if not repo.full_name:
+        raise ValueError("full_name is required for upsert_repo")
     stmt = (
         insert(Repo)
         .values(

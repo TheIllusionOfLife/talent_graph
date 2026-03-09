@@ -67,10 +67,10 @@ async def test_openalex_ingest_is_idempotent(db_session_factory) -> None:
     mock_builder = AsyncMock()
     mock_builder.upsert_paper = AsyncMock()
 
+    respx.get("https://api.openalex.org/works").mock(
+        return_value=Response(200, json=OPENALEX_RESPONSE)
+    )
     for _ in range(2):
-        respx.get("https://api.openalex.org/works").mock(
-            return_value=Response(200, json=OPENALEX_RESPONSE)
-        )
         with patch("talent_graph.ingestion.jobs.GraphBuilder", return_value=mock_builder):
             await ingest_openalex(
                 query="attention mechanism",
@@ -107,19 +107,19 @@ async def test_github_ingest_is_idempotent(db_session_factory) -> None:
     mock_builder = AsyncMock()
     mock_builder.upsert_repo = AsyncMock()
 
+    respx.get("https://api.github.com/repos/octocat/Hello-World").mock(
+        return_value=Response(200, json=repo_fixture)
+    )
+    respx.get("https://api.github.com/repos/octocat/Hello-World/contributors").mock(
+        return_value=Response(200, json=contributors_fixture)
+    )
+    respx.get("https://api.github.com/users/octocat").mock(
+        return_value=Response(200, json=user_fixture)
+    )
+    respx.get("https://api.github.com/users/contributor1").mock(
+        return_value=Response(200, json=contributor1_user)
+    )
     for _ in range(2):
-        respx.get("https://api.github.com/repos/octocat/Hello-World").mock(
-            return_value=Response(200, json=repo_fixture)
-        )
-        respx.get("https://api.github.com/repos/octocat/Hello-World/contributors").mock(
-            return_value=Response(200, json=contributors_fixture)
-        )
-        respx.get("https://api.github.com/users/octocat").mock(
-            return_value=Response(200, json=user_fixture)
-        )
-        respx.get("https://api.github.com/users/contributor1").mock(
-            return_value=Response(200, json=contributor1_user)
-        )
         with patch("talent_graph.ingestion.jobs.GraphBuilder", return_value=mock_builder):
             await ingest_github(
                 repos=["octocat/Hello-World"],
