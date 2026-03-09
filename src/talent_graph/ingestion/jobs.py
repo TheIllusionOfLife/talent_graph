@@ -6,7 +6,7 @@ import json
 import structlog
 
 from talent_graph.config.settings import get_settings
-from talent_graph.entity_resolution.resolver import resolve_person
+from talent_graph.entity_resolution.resolver import resolve_person, write_heuristic_links
 from talent_graph.graph.graph_builder import GraphBuilder
 from talent_graph.ingestion.github_client import GitHubClient
 from talent_graph.ingestion.openalex_client import OpenAlexClient
@@ -85,8 +85,9 @@ async def ingest_openalex(
                     await upsert_org(session, org)
                     counts["orgs"] += 1
 
-            # Resolve and upsert persons
+            # Resolve and upsert persons; write heuristic links AFTER upsert (FK safety)
             persons_seen: set[str] = set()
+            resolved_persons = []
             for authorship in paper.authors:
                 person = authorship.person
                 canon_id = await resolve_person(session, person)
@@ -94,6 +95,10 @@ async def ingest_openalex(
                     persons_seen.add(canon_id)
                     await upsert_person(session, person)
                     counts["persons"] += 1
+                    resolved_persons.append(person)
+
+            for person in resolved_persons:
+                await write_heuristic_links(session, person)
 
             # Concepts
             for concept in paper.concepts:
@@ -164,10 +169,11 @@ async def ingest_github(
                 login: normalize_github_user(raw_user) for login, raw_user in raw_users.items()
             }
 
-            # 4. Resolve + upsert persons (BEFORE repo upsert to get owner_person_id)
+            # 4. Resolve + upsert persons; write heuristic links AFTER upsert (FK safety)
             async with get_db_session() as session:
                 login_to_canon_id: dict[str, str] = {}
                 persons_seen: set[str] = set()
+                resolved_persons = []
                 for login, person in person_records.items():
                     canon_id = await resolve_person(session, person)
                     login_to_canon_id[login] = canon_id
@@ -175,6 +181,10 @@ async def ingest_github(
                         persons_seen.add(canon_id)
                         await upsert_person(session, person)
                         counts["persons"] += 1
+                        resolved_persons.append(person)
+
+                for person in resolved_persons:
+                    await write_heuristic_links(session, person)
 
                 # 5. Upsert repo
                 owner_person_id = login_to_canon_id.get(owner)

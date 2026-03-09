@@ -18,6 +18,32 @@ def _make_session(scalar_result: str | None) -> AsyncMock:
 
 
 @pytest.mark.asyncio
+async def test_resolves_by_openalex_author_id() -> None:
+    session = _make_session("person_existing_openalex")
+    person = PersonRecord(name="Alice", openalex_author_id="A5023888391")
+    result = await resolve_deterministic(session, person)
+    assert result == "person_existing_openalex"
+
+
+@pytest.mark.asyncio
+async def test_openalex_author_id_takes_priority_over_orcid() -> None:
+    """openalex_author_id is checked first and stops further queries on match."""
+    session = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = "person_openalex_match"
+    session.execute.return_value = mock_result
+
+    person = PersonRecord(
+        name="Alice",
+        openalex_author_id="A5023888391",
+        orcid="0000-0001-2345-6789",
+    )
+    result = await resolve_deterministic(session, person)
+    assert result == "person_openalex_match"
+    assert session.execute.call_count == 1  # stopped after openalex_author_id
+
+
+@pytest.mark.asyncio
 async def test_resolves_by_orcid() -> None:
     session = _make_session("person_existing_123")
     person = PersonRecord(name="Alice", orcid="https://orcid.org/0000-0001-2345-6789")

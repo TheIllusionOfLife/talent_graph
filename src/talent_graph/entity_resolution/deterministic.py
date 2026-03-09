@@ -1,5 +1,6 @@
-"""Deterministic entity resolution — exact-match on ORCID, GitHub login, email.
+"""Deterministic entity resolution — exact-match on external IDs.
 
+Priority order: openalex_author_id → ORCID → github_login → homepage (GitHub URL) → email.
 All matches carry confidence = 1.0. Returns an existing canonical_person_id or None.
 """
 
@@ -30,9 +31,17 @@ def _extract_github_login(url: str) -> str | None:
 async def resolve_deterministic(session: AsyncSession, person: PersonRecord) -> str | None:
     """Return existing canonical_person_id for the first deterministic match, else None.
 
-    Priority order: ORCID → github_login → homepage (GitHub URL) → email.
+    Priority order: openalex_author_id → ORCID → github_login → homepage → email.
     Stops at the first match to avoid unnecessary queries.
     """
+    # 0. OpenAlex author ID — source-native stable ID, highest priority
+    if person.openalex_author_id:
+        result = await session.execute(
+            select(Person.id).where(Person.openalex_author_id == person.openalex_author_id)
+        )
+        if found := result.scalar_one_or_none():
+            return found
+
     # 1. ORCID match
     if person.orcid:
         bare = _normalize_orcid(person.orcid)
