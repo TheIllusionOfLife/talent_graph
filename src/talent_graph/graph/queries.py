@@ -146,3 +146,23 @@ MATCH (b:Person {person_id: pair.person_id_b})
 MERGE (a)-[r:COAUTHORED_WITH]->(b)
 SET r.updated_at = timestamp()
 """
+
+MERGE_REPO = """
+MERGE (r:Repo {full_name: $full_name})
+SET r.github_repo_id = $github_repo_id,
+    r.description = $description,
+    r.language = $language,
+    r.stars = $stars,
+    r.topics = $topics,
+    r.updated_at = timestamp()
+RETURN r.full_name AS full_name
+"""
+
+MERGE_CONTRIBUTED_TO_BATCH = """
+UNWIND $contributors AS c
+MATCH (person:Person {person_id: c.person_id})
+MATCH (repo:Repo {full_name: $full_name})
+MERGE (person)-[r:CONTRIBUTED_TO]->(repo)
+SET r.contributions = c.contributions,
+    r.updated_at = timestamp()
+"""

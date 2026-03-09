@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from talent_graph.normalize.normalize_github import normalize_repo, normalize_github_user
+from talent_graph.normalize.normalize_github import normalize_github_user, normalize_repo
 
 FIXTURE_DIR = Path(__file__).parent.parent / "fixtures"
 
@@ -47,9 +47,7 @@ def test_normalize_repo_extracts_owner(repo_fixture: dict) -> None:
     assert repo.owner_type == "User"
 
 
-def test_normalize_repo_with_contributors(
-    repo_fixture: dict, contributors_fixture: list
-) -> None:
+def test_normalize_repo_with_contributors(repo_fixture: dict, contributors_fixture: list) -> None:
     repo = normalize_repo(repo_fixture, contributors=contributors_fixture)
     # Bots excluded by default in normalizer
     assert "octocat" in repo.contributor_logins

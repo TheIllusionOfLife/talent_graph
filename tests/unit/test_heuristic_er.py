@@ -3,10 +3,10 @@
 import pytest
 
 from talent_graph.entity_resolution.heuristic import (
-    compute_name_similarity,
-    compute_org_similarity,
     compute_concept_overlap,
     compute_heuristic_confidence,
+    compute_name_similarity,
+    compute_org_similarity,
 )
 from talent_graph.normalize.common_schema import OrgRecord, PersonRecord
 

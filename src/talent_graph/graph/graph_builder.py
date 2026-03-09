@@ -8,12 +8,14 @@ from talent_graph.graph.queries import (
     MERGE_AUTHORED_BATCH,
     MERGE_COAUTHORED_BATCH,
     MERGE_CONCEPTS_BATCH,
+    MERGE_CONTRIBUTED_TO_BATCH,
     MERGE_ORGS_BATCH,
     MERGE_PAPER,
     MERGE_PAPER_ABOUT_CONCEPTS_BATCH,
     MERGE_PERSONS_AND_AFFILIATED_BATCH,
+    MERGE_REPO,
 )
-from talent_graph.normalize.common_schema import PaperRecord
+from talent_graph.normalize.common_schema import PaperRecord, RepoRecord
 
 
 class GraphBuilder:
@@ -102,3 +104,36 @@ class GraphBuilder:
                 coauthor_pairs.append({"person_id_a": id_a, "person_id_b": id_b})
         if coauthor_pairs:
             await run_write_query(MERGE_COAUTHORED_BATCH, {"coauthors": coauthor_pairs})
+
+    async def upsert_repo(
+        self,
+        repo: RepoRecord,
+        contributor_person_ids: dict[str, int],
+    ) -> None:
+        """Write a Repo node and CONTRIBUTED_TO edges to Neo4j.
+
+        Args:
+            repo: Normalized repo record.
+            contributor_person_ids: Mapping of canonical_person_id → contribution count.
+        """
+        await run_write_query(
+            MERGE_REPO,
+            {
+                "full_name": repo.full_name,
+                "github_repo_id": repo.github_repo_id,
+                "description": repo.description,
+                "language": repo.language,
+                "stars": repo.stars,
+                "topics": repo.topics,
+            },
+        )
+
+        if contributor_person_ids:
+            contributors_data = [
+                {"person_id": pid, "contributions": count}
+                for pid, count in contributor_person_ids.items()
+            ]
+            await run_write_query(
+                MERGE_CONTRIBUTED_TO_BATCH,
+                {"full_name": repo.full_name, "contributors": contributors_data},
+            )

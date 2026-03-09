@@ -6,12 +6,22 @@ import json
 import structlog
 
 from talent_graph.config.settings import get_settings
+from talent_graph.entity_resolution.resolver import resolve_person
 from talent_graph.graph.graph_builder import GraphBuilder
+from talent_graph.ingestion.github_client import GitHubClient
 from talent_graph.ingestion.openalex_client import OpenAlexClient
+from talent_graph.normalize.normalize_github import normalize_github_user, normalize_repo
 from talent_graph.normalize.normalize_openalex import normalize_work
 from talent_graph.storage.postgres import get_db_session
 from talent_graph.storage.raw_store import RawStore
-from talent_graph.storage.upsert import upsert_concept, upsert_org, upsert_paper, upsert_person
+from talent_graph.storage.upsert import (
+    upsert_concept,
+    upsert_org,
+    upsert_paper,
+    upsert_person,
+    upsert_repo,
+    upsert_repo_contributor,
+)
 
 log = structlog.get_logger()
 
@@ -21,7 +31,6 @@ def _work_id(raw_work: dict, fallback_index: int) -> str:
     raw_id = raw_work.get("id", "")
     if raw_id:
         return raw_id.split("/")[-1]
-    # Fallback: hash of content (stable across re-runs; avoids "unknown" collision)
     content_hash = hashlib.sha1(
         json.dumps(raw_work, sort_keys=True).encode(), usedforsecurity=False
     ).hexdigest()[:12]
@@ -36,9 +45,9 @@ async def ingest_openalex(
 ) -> dict[str, int]:
     """
     Full OpenAlex ingestion pipeline:
-      fetch → save raw → normalize → upsert postgres → upsert neo4j
+      fetch → save raw → normalize → resolve → upsert postgres → upsert neo4j
 
-    Returns counts of upserted entities (existing records count as 0 on re-run).
+    Returns counts of upserted entities.
     """
     settings = get_settings()
     store = raw_store or RawStore()
@@ -53,29 +62,17 @@ async def ingest_openalex(
 
     for i, raw_work in enumerate(raw_works):
         work_id = _work_id(raw_work, i)
-
-        # Save raw JSON before any processing (safe even on partial failure)
         store.save("openalex", "works", work_id, raw_work)
 
-        # Normalize
         paper = normalize_work(raw_work)
 
-        # Skip works that have no OpenAlex ID — storing "" would cause all such records
-        # to collide on the openalex_work_id unique constraint.
         if not paper.openalex_work_id:
             log.warning("openalex.work.skipped", reason="missing_id", raw_id=work_id)
             continue
 
-        # Assign canonical IDs (stub: use openalex author ID as person_id for now;
-        # Sprint 2 adds full entity resolution via deterministic + heuristic matching)
-        for authorship in paper.authors:
-            person = authorship.person
-            if person.openalex_author_id and person.canonical_person_id is None:
-                person.canonical_person_id = f"person_{person.openalex_author_id}"
-
         # Upsert to Postgres (single transaction per paper)
         async with get_db_session() as session:
-            # Orgs (guarded: only when openalex_institution_id is present)
+            # Orgs first
             orgs_seen: set[str] = set()
             for authorship in paper.authors:
                 org = authorship.person.org
@@ -88,13 +85,14 @@ async def ingest_openalex(
                     await upsert_org(session, org)
                     counts["orgs"] += 1
 
-            # Persons
+            # Resolve and upsert persons
             persons_seen: set[str] = set()
             for authorship in paper.authors:
-                pid = authorship.person.canonical_person_id
-                if pid and pid not in persons_seen:
-                    persons_seen.add(pid)
-                    await upsert_person(session, authorship.person)
+                person = authorship.person
+                canon_id = await resolve_person(session, person)
+                if canon_id not in persons_seen:
+                    persons_seen.add(canon_id)
+                    await upsert_person(session, person)
                     counts["persons"] += 1
 
             # Concepts
@@ -106,8 +104,7 @@ async def ingest_openalex(
             await upsert_paper(session, paper)
             counts["papers"] += 1
 
-        # Upsert to Neo4j — runs after Postgres commit; eventual consistency is acceptable
-        # because all Neo4j writes are idempotent (MERGE) and a re-run will heal any gap.
+        # Upsert to Neo4j — eventual consistency acceptable (MERGE is idempotent)
         try:
             await builder.upsert_paper(paper)
         except Exception as neo4j_exc:
@@ -118,4 +115,101 @@ async def ingest_openalex(
             )
 
     log.info("openalex.ingest.done", **counts)
+    return counts
+
+
+async def ingest_github(
+    repos: list[str],
+    raw_store: RawStore | None = None,
+    graph_builder: GraphBuilder | None = None,
+) -> dict[str, int]:
+    """
+    Full GitHub ingestion pipeline for a list of 'owner/repo' slugs:
+      fetch → save raw → normalize → resolve → upsert postgres → upsert neo4j
+
+    Entity resolution runs BEFORE any upsert to prevent duplicate Person nodes.
+    Returns counts of upserted entities.
+    """
+    settings = get_settings()
+    store = raw_store or RawStore()
+    builder = graph_builder or GraphBuilder()
+
+    counts = {"repos": 0, "persons": 0}
+
+    async with GitHubClient(token=settings.github_token) as gh:
+        for repo_slug in repos:
+            owner, repo_name = repo_slug.split("/", 1)
+
+            # 1. Fetch raw data
+            raw_repo = await gh.get_repo(owner, repo_name)
+            raw_contributors = await gh.get_contributors(owner, repo_name, exclude_bots=True)
+
+            # Fetch user profiles for contributors (owner + contributors)
+            contributor_logins = [c["login"] for c in raw_contributors]
+            raw_users: dict[str, dict] = {}
+            for login in set([owner] + contributor_logins):
+                try:
+                    raw_users[login] = await gh.get_user(login)
+                except Exception:
+                    log.warning("github.user.fetch_failed", login=login)
+
+            # 2. Save raw JSON
+            store.save("github", "repos", repo_slug.replace("/", "_"), raw_repo)
+            for login, raw_user in raw_users.items():
+                store.save("github", "users", login, raw_user)
+
+            # 3. Normalize
+            repo_record = normalize_repo(raw_repo, contributors=raw_contributors)
+            person_records = {
+                login: normalize_github_user(raw_user) for login, raw_user in raw_users.items()
+            }
+
+            # 4. Resolve + upsert persons (BEFORE repo upsert to get owner_person_id)
+            async with get_db_session() as session:
+                login_to_canon_id: dict[str, str] = {}
+                persons_seen: set[str] = set()
+                for login, person in person_records.items():
+                    canon_id = await resolve_person(session, person)
+                    login_to_canon_id[login] = canon_id
+                    if canon_id not in persons_seen:
+                        persons_seen.add(canon_id)
+                        await upsert_person(session, person)
+                        counts["persons"] += 1
+
+                # 5. Upsert repo
+                owner_person_id = login_to_canon_id.get(owner)
+                repo_db_id = await upsert_repo(
+                    session,
+                    repo_record,
+                    owner_person_id=owner_person_id,
+                )
+                counts["repos"] += 1
+
+                # 6. Upsert repo_contributors join rows
+                contributions_by_login = {c["login"]: c["contributions"] for c in raw_contributors}
+                for login in repo_record.contributor_logins:
+                    if login in login_to_canon_id:
+                        await upsert_repo_contributor(
+                            session,
+                            repo_id=repo_db_id,
+                            person_id=login_to_canon_id[login],
+                            contributions=contributions_by_login.get(login, 0),
+                        )
+
+            # 7. Upsert to Neo4j
+            try:
+                contributor_person_ids = {
+                    login_to_canon_id[login]: contributions_by_login.get(login, 0)
+                    for login in repo_record.contributor_logins
+                    if login in login_to_canon_id
+                }
+                await builder.upsert_repo(repo_record, contributor_person_ids)
+            except Exception as neo4j_exc:
+                log.warning(
+                    "neo4j.repo.upsert.failed",
+                    repo=repo_slug,
+                    error=str(neo4j_exc),
+                )
+
+    log.info("github.ingest.done", **counts)
     return counts

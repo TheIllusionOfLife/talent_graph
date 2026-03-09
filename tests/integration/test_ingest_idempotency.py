@@ -11,7 +11,7 @@ import pytest
 import respx
 from httpx import Response
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from testcontainers.postgres import PostgresContainer
 
 import talent_graph.storage.postgres as postgres_module
@@ -132,7 +132,15 @@ async def test_github_ingest_is_idempotent(clean_session_factory) -> None:
         return_value=Response(200, json=user_fixture)
     )
     respx.get("https://api.github.com/users/contributor1").mock(
-        return_value=Response(200, json={**user_fixture, "login": "contributor1", "name": "Contributor One", "email": None})
+        return_value=Response(
+            200,
+            json={
+                **user_fixture,
+                "login": "contributor1",
+                "name": "Contributor One",
+                "email": None,
+            },
+        )
     )
 
     mock_builder = AsyncMock()
@@ -155,7 +163,15 @@ async def test_github_ingest_is_idempotent(clean_session_factory) -> None:
         return_value=Response(200, json=user_fixture)
     )
     respx.get("https://api.github.com/users/contributor1").mock(
-        return_value=Response(200, json={**user_fixture, "login": "contributor1", "name": "Contributor One", "email": None})
+        return_value=Response(
+            200,
+            json={
+                **user_fixture,
+                "login": "contributor1",
+                "name": "Contributor One",
+                "email": None,
+            },
+        )
     )
 
     with patch("talent_graph.ingestion.jobs.GraphBuilder", return_value=mock_builder):

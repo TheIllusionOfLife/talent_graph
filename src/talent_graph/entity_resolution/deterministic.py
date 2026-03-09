@@ -1,0 +1,66 @@
+"""Deterministic entity resolution — exact-match on ORCID, GitHub login, email.
+
+All matches carry confidence = 1.0. Returns an existing canonical_person_id or None.
+"""
+
+import re
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from talent_graph.normalize.common_schema import PersonRecord
+from talent_graph.storage.models import Person
+
+_GITHUB_URL_RE = re.compile(r"^https?://(?:www\.)?github\.com/([A-Za-z0-9\-]+)/?$", re.IGNORECASE)
+_ORCID_BARE_RE = re.compile(r"(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$", re.IGNORECASE)
+
+
+def _normalize_orcid(orcid: str) -> str | None:
+    """Strip any URL prefix and return the bare ORCID, or None if malformed."""
+    m = _ORCID_BARE_RE.search(orcid)
+    return m.group(1) if m else None
+
+
+def _extract_github_login(url: str) -> str | None:
+    """Extract GitHub username from a github.com URL, or return None."""
+    m = _GITHUB_URL_RE.match(url.strip())
+    return m.group(1) if m else None
+
+
+async def resolve_deterministic(session: AsyncSession, person: PersonRecord) -> str | None:
+    """Return existing canonical_person_id for the first deterministic match, else None.
+
+    Priority order: ORCID → github_login → homepage (GitHub URL) → email.
+    Stops at the first match to avoid unnecessary queries.
+    """
+    # 1. ORCID match
+    if person.orcid:
+        bare = _normalize_orcid(person.orcid)
+        if bare:
+            result = await session.execute(select(Person.id).where(Person.orcid == bare))
+            if found := result.scalar_one_or_none():
+                return found
+
+    # 2. Direct github_login match
+    if person.github_login:
+        result = await session.execute(
+            select(Person.id).where(Person.github_login == person.github_login)
+        )
+        if found := result.scalar_one_or_none():
+            return found
+
+    # 3. GitHub URL in OpenAlex homepage
+    if person.homepage:
+        login = _extract_github_login(person.homepage)
+        if login:
+            result = await session.execute(select(Person.id).where(Person.github_login == login))
+            if found := result.scalar_one_or_none():
+                return found
+
+    # 4. Email match
+    if person.email:
+        result = await session.execute(select(Person.id).where(Person.email == person.email))
+        if found := result.scalar_one_or_none():
+            return found
+
+    return None
