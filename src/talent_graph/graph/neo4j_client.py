@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession
+from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
 
 from talent_graph.config.settings import get_settings
 
@@ -40,7 +40,7 @@ async def run_query(
     query: str,
     parameters: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Execute a Cypher query and return all records as dicts."""
+    """Execute a Cypher query (auto-commit) and return all records as dicts."""
     async with get_session() as session:
         result = await session.run(query, parameters or {})
         return [record.data() async for record in result]
@@ -50,18 +50,25 @@ async def run_write_query(
     query: str,
     parameters: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Execute a write Cypher query in a transaction."""
+    """Execute a write Cypher query in an explicit transaction."""
+    params = parameters or {}
+
+    async def _txn(tx: AsyncTransaction) -> list[dict[str, Any]]:
+        result = await tx.run(query, params)
+        return [record.data() async for record in result]
+
     async with get_session() as session:
-        result = await session.execute_write(
-            lambda tx: tx.run(query, parameters or {})
-        )
-        return [record.data() for record in result]
+        return await session.execute_write(_txn)
 
 
 async def verify_connectivity() -> bool:
-    """Return True if Neo4j is reachable and APOC is available."""
+    """Return True if Neo4j is reachable. Tries APOC first, falls back to RETURN 1."""
     try:
         rows = await run_query("RETURN apoc.version() AS version")
         return bool(rows)
     except Exception:
-        return False
+        try:
+            rows = await run_query("RETURN 1 AS ok")
+            return bool(rows)
+        except Exception:
+            return False

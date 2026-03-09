@@ -8,14 +8,23 @@ from talent_graph.normalize.common_schema import (
     PersonRecord,
 )
 
-_POSITION_ORDER = {"first": 1, "middle": 2, "last": 99}
-
 
 def _strip_openalex_prefix(url: str | None) -> str | None:
     """'https://openalex.org/W123' → 'W123'"""
     if not url:
         return None
     return url.split("/")[-1] if url.startswith("http") else url
+
+
+def _reconstruct_abstract(inverted_index: dict[str, list[int]]) -> str | None:
+    """Reconstruct plaintext from OpenAlex abstract_inverted_index format."""
+    if not inverted_index:
+        return None
+    word_positions: list[tuple[int, str]] = [
+        (pos, word) for word, positions in inverted_index.items() for pos in positions
+    ]
+    word_positions.sort()
+    return " ".join(word for _, word in word_positions)
 
 
 def _parse_institution(raw: dict) -> OrgRecord:
@@ -50,8 +59,10 @@ def normalize_work(raw: dict) -> PaperRecord:
     authorships = raw.get("authorships") or []
     authors: list[AuthorPosition] = []
     for i, authorship in enumerate(authorships):
-        pos_str = authorship.get("author_position", "middle")
-        position = _POSITION_ORDER.get(pos_str, i + 2)
+        # Use list index (1-based) to preserve stable ordering across all positions.
+        # OpenAlex "first"/"middle"/"last" labels are not numerically stable for
+        # papers with many middle authors.
+        position = i + 1
         authors.append(_parse_authorship(authorship, position))
 
     concepts: list[ConceptRecord] = []
@@ -67,12 +78,16 @@ def normalize_work(raw: dict) -> PaperRecord:
                 )
             )
 
+    abstract_raw = raw.get("abstract_inverted_index")
+    abstract = _reconstruct_abstract(abstract_raw) if abstract_raw else None
+
     return PaperRecord(
         title=raw.get("title", ""),
         openalex_work_id=_strip_openalex_prefix(raw.get("id")) or "",
         publication_year=raw.get("publication_year"),
         citation_count=raw.get("cited_by_count", 0),
         doi=raw.get("doi"),
+        abstract=abstract,
         authors=authors,
         concepts=concepts,
     )

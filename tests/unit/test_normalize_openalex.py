@@ -72,8 +72,8 @@ def test_normalize_work_author_position_string_first(work_fixture: dict) -> None
     """'first' maps to position 1, 'middle' to 2, 'last' to 99."""
     paper = normalize_work(work_fixture)
     positions = [a.position for a in paper.authors]
-    assert positions[0] == 1   # "first"
-    assert positions[1] == 2   # "middle"
+    assert positions[0] == 1  # "first"
+    assert positions[1] == 2  # "middle"
 
 
 def test_normalize_work_strips_openalex_url_prefix(work_fixture: dict) -> None:
@@ -81,3 +81,49 @@ def test_normalize_work_strips_openalex_url_prefix(work_fixture: dict) -> None:
     paper = normalize_work(work_fixture)
     assert not paper.openalex_work_id.startswith("http")
     assert paper.openalex_work_id == "W2741809807"
+
+
+def test_normalize_work_reconstructs_abstract(work_fixture: dict) -> None:
+    """abstract_inverted_index is reconstructed into plaintext."""
+    paper = normalize_work(work_fixture)
+    # Fixture has {"The": [0], "dominant": [1], "sequence": [2], "transduction": [3]}
+    assert paper.abstract == "The dominant sequence transduction"
+
+
+def test_normalize_work_abstract_none_when_missing(work_fixture: dict) -> None:
+    work_fixture.pop("abstract_inverted_index", None)
+    paper = normalize_work(work_fixture)
+    assert paper.abstract is None
+
+
+def test_normalize_work_middle_authors_preserve_order(work_fixture: dict) -> None:
+    """Multiple 'middle' authors must get distinct sequential positions."""
+    work_fixture["authorships"] = [
+        {
+            "author_position": "first",
+            "author": {"id": "https://openalex.org/A1", "display_name": "Author One"},
+            "institutions": [],
+            "is_corresponding": False,
+        },
+        {
+            "author_position": "middle",
+            "author": {"id": "https://openalex.org/A2", "display_name": "Author Two"},
+            "institutions": [],
+            "is_corresponding": False,
+        },
+        {
+            "author_position": "middle",
+            "author": {"id": "https://openalex.org/A3", "display_name": "Author Three"},
+            "institutions": [],
+            "is_corresponding": False,
+        },
+        {
+            "author_position": "last",
+            "author": {"id": "https://openalex.org/A4", "display_name": "Author Four"},
+            "institutions": [],
+            "is_corresponding": False,
+        },
+    ]
+    paper = normalize_work(work_fixture)
+    positions = [a.position for a in paper.authors]
+    assert positions == [1, 2, 3, 4], f"Expected [1,2,3,4] but got {positions}"

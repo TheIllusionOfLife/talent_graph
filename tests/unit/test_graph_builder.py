@@ -50,7 +50,9 @@ def paper() -> PaperRecord:
 
 @pytest.mark.asyncio
 async def test_upsert_paper_calls_merge_paper(builder: GraphBuilder, paper: PaperRecord) -> None:
-    with patch("talent_graph.graph.graph_builder.run_write_query", new_callable=AsyncMock) as mock_q:
+    with patch(
+        "talent_graph.graph.graph_builder.run_write_query", new_callable=AsyncMock
+    ) as mock_q:
         mock_q.return_value = [{"openalex_work_id": "W2741809807"}]
         await builder.upsert_paper(paper)
         assert mock_q.called
@@ -121,7 +123,9 @@ async def test_upsert_paper_skips_author_without_canonical_id(
 @pytest.mark.asyncio
 async def test_upsert_paper_idempotent(builder: GraphBuilder, paper: PaperRecord) -> None:
     """Calling upsert_paper twice should not raise errors (MERGE is idempotent)."""
-    with patch("talent_graph.graph.graph_builder.run_write_query", new_callable=AsyncMock) as mock_q:
+    with patch(
+        "talent_graph.graph.graph_builder.run_write_query", new_callable=AsyncMock
+    ) as mock_q:
         mock_q.return_value = []
         await builder.upsert_paper(paper)
         await builder.upsert_paper(paper)

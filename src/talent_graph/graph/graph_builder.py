@@ -1,15 +1,17 @@
-"""Builds and upserts graph nodes/edges into Neo4j using idempotent MERGE."""
+"""Builds and upserts graph nodes/edges into Neo4j using idempotent MERGE.
+
+Uses UNWIND-based batch queries to minimize Neo4j round trips.
+"""
 
 from talent_graph.graph.neo4j_client import run_write_query
 from talent_graph.graph.queries import (
-    MERGE_AFFILIATED,
-    MERGE_AUTHORED,
-    MERGE_COAUTHORED,
-    MERGE_CONCEPT,
-    MERGE_ORG,
+    MERGE_AUTHORED_BATCH,
+    MERGE_COAUTHORED_BATCH,
+    MERGE_CONCEPTS_BATCH,
+    MERGE_ORGS_BATCH,
     MERGE_PAPER,
-    MERGE_PAPER_ABOUT_CONCEPT,
-    MERGE_PERSON,
+    MERGE_PAPER_ABOUT_CONCEPTS_BATCH,
+    MERGE_PERSONS_AND_AFFILIATED_BATCH,
 )
 from talent_graph.normalize.common_schema import PaperRecord
 
@@ -18,7 +20,7 @@ class GraphBuilder:
     """Upserts canonical records into Neo4j. All operations use MERGE (idempotent)."""
 
     async def upsert_paper(self, paper: PaperRecord) -> None:
-        """Write a paper and all related nodes/edges to Neo4j."""
+        """Write a paper and all related nodes/edges to Neo4j in ~7 round trips."""
         # 1. Upsert paper node
         await run_write_query(
             MERGE_PAPER,
@@ -31,85 +33,72 @@ class GraphBuilder:
             },
         )
 
-        # 2. Upsert concepts + ABOUT edges
-        for concept in paper.concepts:
-            await run_write_query(
-                MERGE_CONCEPT,
+        # 2. Batch upsert concepts + ABOUT edges
+        if paper.concepts:
+            concepts_data = [
                 {
-                    "concept_id": concept.openalex_concept_id,
-                    "openalex_concept_id": concept.openalex_concept_id,
-                    "name": concept.name,
-                    "level": concept.level,
-                },
-            )
+                    "openalex_concept_id": c.openalex_concept_id,
+                    "name": c.name,
+                    "level": c.level,
+                    "score": c.score,
+                }
+                for c in paper.concepts
+            ]
+            await run_write_query(MERGE_CONCEPTS_BATCH, {"concepts": concepts_data})
             await run_write_query(
-                MERGE_PAPER_ABOUT_CONCEPT,
-                {
-                    "openalex_work_id": paper.openalex_work_id,
-                    "openalex_concept_id": concept.openalex_concept_id,
-                    "score": concept.score,
-                },
+                MERGE_PAPER_ABOUT_CONCEPTS_BATCH,
+                {"openalex_work_id": paper.openalex_work_id, "concepts": concepts_data},
             )
 
-        # 3. Upsert persons, orgs, AUTHORED + AFFILIATED edges
-        resolved_authors = [
-            ap for ap in paper.authors if ap.person.canonical_person_id is not None
+        # 3. Resolve authors that have a canonical ID
+        resolved = [ap for ap in paper.authors if ap.person.canonical_person_id is not None]
+        if not resolved:
+            return
+
+        # 4. Batch upsert orgs (deduplicated)
+        orgs_seen: set[str] = set()
+        orgs_data: list[dict] = []
+        for ap in resolved:
+            org = ap.person.org
+            if org and org.openalex_institution_id and org.openalex_institution_id not in orgs_seen:
+                orgs_seen.add(org.openalex_institution_id)
+                orgs_data.append(
+                    {"openalex_institution_id": org.openalex_institution_id, "name": org.name}
+                )
+        if orgs_data:
+            await run_write_query(MERGE_ORGS_BATCH, {"orgs": orgs_data})
+
+        # 5. Batch upsert persons + AFFILIATED_WITH edges
+        authors_data = [
+            {
+                "person_id": ap.person.canonical_person_id,
+                "name": ap.person.name,
+                "openalex_author_id": ap.person.openalex_author_id,
+                "github_login": ap.person.github_login,
+                "orcid": ap.person.orcid,
+                "openalex_institution_id": (
+                    ap.person.org.openalex_institution_id if ap.person.org else None
+                ),
+                "author_position": ap.position,
+                "is_corresponding": ap.is_corresponding,
+            }
+            for ap in resolved
         ]
-        for authorship in resolved_authors:
-            person = authorship.person
+        await run_write_query(MERGE_PERSONS_AND_AFFILIATED_BATCH, {"authors": authors_data})
 
-            # Upsert org first (FK reference)
-            if person.org and person.org.openalex_institution_id:
-                await run_write_query(
-                    MERGE_ORG,
-                    {
-                        "org_id": person.org.openalex_institution_id,
-                        "openalex_institution_id": person.org.openalex_institution_id,
-                        "name": person.org.name,
-                    },
+        # 6. Batch upsert AUTHORED edges
+        await run_write_query(
+            MERGE_AUTHORED_BATCH,
+            {"openalex_work_id": paper.openalex_work_id, "authors": authors_data},
+        )
+
+        # 7. Batch upsert COAUTHORED_WITH edges (canonical ordering prevents duplicates)
+        coauthor_pairs: list[dict] = []
+        for i, ap_a in enumerate(resolved):
+            for ap_b in resolved[i + 1 :]:
+                id_a, id_b = sorted(
+                    [ap_a.person.canonical_person_id, ap_b.person.canonical_person_id]
                 )
-
-            # Upsert person node
-            await run_write_query(
-                MERGE_PERSON,
-                {
-                    "person_id": person.canonical_person_id,
-                    "name": person.name,
-                    "openalex_author_id": person.openalex_author_id,
-                    "github_login": person.github_login,
-                    "orcid": person.orcid,
-                },
-            )
-
-            # AFFILIATED_WITH edge
-            if person.org and person.org.openalex_institution_id:
-                await run_write_query(
-                    MERGE_AFFILIATED,
-                    {
-                        "person_id": person.canonical_person_id,
-                        "openalex_institution_id": person.org.openalex_institution_id,
-                    },
-                )
-
-            # AUTHORED edge
-            await run_write_query(
-                MERGE_AUTHORED,
-                {
-                    "person_id": person.canonical_person_id,
-                    "openalex_work_id": paper.openalex_work_id,
-                    "author_position": authorship.position,
-                    "is_corresponding": authorship.is_corresponding,
-                },
-            )
-
-        # 4. COAUTHORED_WITH edges (undirected, between all resolved co-authors)
-        for i, ap_a in enumerate(resolved_authors):
-            for ap_b in resolved_authors[i + 1 :]:
-                pid_a = ap_a.person.canonical_person_id
-                pid_b = ap_b.person.canonical_person_id
-                # Canonical ordering prevents duplicate reverse edges
-                id_a, id_b = sorted([pid_a, pid_b])  # type: ignore[type-var]
-                await run_write_query(
-                    MERGE_COAUTHORED,
-                    {"person_id_a": id_a, "person_id_b": id_b},
-                )
+                coauthor_pairs.append({"person_id_a": id_a, "person_id_b": id_b})
+        if coauthor_pairs:
+            await run_write_query(MERGE_COAUTHORED_BATCH, {"coauthors": coauthor_pairs})

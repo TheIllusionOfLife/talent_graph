@@ -86,5 +86,63 @@ MERGE_COAUTHORED = """
 MATCH (a:Person {person_id: $person_id_a})
 MATCH (b:Person {person_id: $person_id_b})
 MERGE (a)-[r:COAUTHORED_WITH]->(b)
-SET r.paper_count = coalesce(r.paper_count, 0) + 1
+SET r.updated_at = timestamp()
+"""
+
+# ─── Batch upserts (UNWIND — reduces N+1 round trips) ─────────────────────────
+
+MERGE_CONCEPTS_BATCH = """
+UNWIND $concepts AS c
+MERGE (concept:Concept {openalex_concept_id: c.openalex_concept_id})
+SET concept.concept_id = c.openalex_concept_id,
+    concept.name = c.name,
+    concept.level = c.level,
+    concept.updated_at = timestamp()
+"""
+
+MERGE_PAPER_ABOUT_CONCEPTS_BATCH = """
+UNWIND $concepts AS c
+MATCH (paper:Paper {openalex_work_id: $openalex_work_id})
+MATCH (concept:Concept {openalex_concept_id: c.openalex_concept_id})
+MERGE (paper)-[r:ABOUT]->(concept)
+SET r.score = c.score
+"""
+
+MERGE_ORGS_BATCH = """
+UNWIND $orgs AS o
+MERGE (org:Org {openalex_institution_id: o.openalex_institution_id})
+SET org.org_id = o.openalex_institution_id,
+    org.name = o.name,
+    org.updated_at = timestamp()
+"""
+
+MERGE_PERSONS_AND_AFFILIATED_BATCH = """
+UNWIND $authors AS a
+MERGE (person:Person {person_id: a.person_id})
+SET person.name = a.name,
+    person.openalex_author_id = a.openalex_author_id,
+    person.github_login = a.github_login,
+    person.orcid = a.orcid,
+    person.updated_at = timestamp()
+WITH person, a
+WHERE a.openalex_institution_id IS NOT NULL
+MATCH (org:Org {openalex_institution_id: a.openalex_institution_id})
+MERGE (person)-[:AFFILIATED_WITH]->(org)
+"""
+
+MERGE_AUTHORED_BATCH = """
+UNWIND $authors AS a
+MATCH (person:Person {person_id: a.person_id})
+MATCH (paper:Paper {openalex_work_id: $openalex_work_id})
+MERGE (person)-[r:AUTHORED]->(paper)
+SET r.author_position = a.author_position,
+    r.is_corresponding = a.is_corresponding
+"""
+
+MERGE_COAUTHORED_BATCH = """
+UNWIND $coauthors AS pair
+MATCH (a:Person {person_id: pair.person_id_a})
+MATCH (b:Person {person_id: pair.person_id_b})
+MERGE (a)-[r:COAUTHORED_WITH]->(b)
+SET r.updated_at = timestamp()
 """

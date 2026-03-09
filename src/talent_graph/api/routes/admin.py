@@ -1,6 +1,6 @@
 """Admin endpoints — all require API key."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel
 
 from talent_graph.api.deps import require_api_key
@@ -16,10 +16,16 @@ class IngestRequest(BaseModel):
 
 class IngestResponse(BaseModel):
     status: str
-    counts: dict[str, int]
+    message: str
 
 
 @router.post("/ingest/openalex", response_model=IngestResponse)
-async def trigger_openalex_ingest(body: IngestRequest) -> IngestResponse:
-    counts = await ingest_openalex(query=body.query, max_results=body.max_results)
-    return IngestResponse(status="ok", counts=counts)
+async def trigger_openalex_ingest(
+    body: IngestRequest, background_tasks: BackgroundTasks
+) -> IngestResponse:
+    """Queue an OpenAlex ingestion job. Returns immediately; runs in background."""
+    background_tasks.add_task(ingest_openalex, query=body.query, max_results=body.max_results)
+    return IngestResponse(
+        status="accepted",
+        message=f"Ingestion queued for query '{body.query}' (max_results={body.max_results})",
+    )

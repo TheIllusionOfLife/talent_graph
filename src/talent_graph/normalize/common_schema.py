@@ -61,5 +61,5 @@ class RepoRecord:
     topics: list[str] = field(default_factory=list)
     github_repo_id: int | None = None
     owner_login: str | None = None  # person or org github login
-    owner_type: str | None = None   # "User" | "Organization"
+    owner_type: str | None = None  # "User" | "Organization"
     contributor_logins: list[str] = field(default_factory=list)

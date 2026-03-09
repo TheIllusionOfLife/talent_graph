@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     openalex_email: str = Field(default="")
     github_token: str = Field(default="")
 
+    # CORS (space-separated origins for env-var convenience)
+    cors_origins: list[str] = Field(default=["http://localhost:3000"])
+
     # Logging
     log_level: str = Field(default="INFO")
     log_format: str = Field(default="json")  # "json" | "text"

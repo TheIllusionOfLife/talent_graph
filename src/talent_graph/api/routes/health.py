@@ -1,5 +1,6 @@
 """Health check endpoint — no auth required."""
 
+import sqlalchemy
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -20,7 +21,7 @@ async def health() -> HealthResponse:
     # Postgres
     try:
         async with get_db_session() as session:
-            await session.execute(__import__("sqlalchemy").text("SELECT 1"))
+            await session.execute(sqlalchemy.text("SELECT 1"))
         pg_status = "ok"
     except Exception:
         pg_status = "error"

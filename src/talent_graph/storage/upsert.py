@@ -15,7 +15,14 @@ from talent_graph.storage.models import Concept, Org, Paper, PaperAuthor, Person
 
 
 async def upsert_org(session: AsyncSession, org: OrgRecord) -> str:
-    """Upsert org by openalex_institution_id. Returns the org's PK."""
+    """Upsert org by openalex_institution_id. Returns the org's PK.
+
+    Raises ValueError if openalex_institution_id is None — ON CONFLICT on NULL
+    never fires in PostgreSQL, causing phantom duplicates on re-ingest.
+    """
+    if not org.openalex_institution_id:
+        raise ValueError("openalex_institution_id is required for upsert_org")
+
     stmt = (
         insert(Org)
         .values(
@@ -27,7 +34,7 @@ async def upsert_org(session: AsyncSession, org: OrgRecord) -> str:
         )
         .on_conflict_do_update(
             index_elements=["openalex_institution_id"],
-            set_={"name": org.name, "country_code": org.country_code},
+            set_={"name": org.name, "country_code": org.country_code, "type": org.type},
         )
         .returning(Org.id)
     )
@@ -66,6 +73,9 @@ async def upsert_person(session: AsyncSession, person: PersonRecord) -> str:
                 "openalex_author_id": person.openalex_author_id,
                 "github_login": person.github_login,
                 "orcid": person.orcid,
+                "email": person.email,
+                "homepage": person.homepage,
+                "org_id": org_id,
             },
         )
         .returning(Person.id)
@@ -75,6 +85,13 @@ async def upsert_person(session: AsyncSession, person: PersonRecord) -> str:
 
 
 async def upsert_concept(session: AsyncSession, concept: ConceptRecord) -> str:
+    """Upsert concept by openalex_concept_id.
+
+    Raises ValueError if openalex_concept_id is None — see upsert_org for rationale.
+    """
+    if not concept.openalex_concept_id:
+        raise ValueError("openalex_concept_id is required for upsert_concept")
+
     stmt = (
         insert(Concept)
         .values(
@@ -94,6 +111,7 @@ async def upsert_concept(session: AsyncSession, concept: ConceptRecord) -> str:
 
 
 async def upsert_paper(session: AsyncSession, paper: PaperRecord) -> str:
+    """Upsert paper by openalex_work_id."""
     stmt = (
         insert(Paper)
         .values(
@@ -112,6 +130,7 @@ async def upsert_paper(session: AsyncSession, paper: PaperRecord) -> str:
                 "title": paper.title,
                 "citation_count": paper.citation_count,
                 "abstract": paper.abstract,
+                "concepts": [c.openalex_concept_id for c in paper.concepts],
             },
         )
         .returning(Paper.id)

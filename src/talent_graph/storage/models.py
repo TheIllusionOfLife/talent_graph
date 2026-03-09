@@ -41,7 +41,9 @@ class Person(Base):
     )
 
     org: Mapped["Org | None"] = relationship("Org", back_populates="members")
-    papers: Mapped[list["Paper"]] = relationship("Paper", secondary="paper_authors", back_populates="authors")
+    papers: Mapped[list["Paper"]] = relationship(
+        "Paper", secondary="paper_authors", back_populates="authors"
+    )
 
 
 class Org(Base):
@@ -66,9 +68,7 @@ class Concept(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(512), nullable=False)
-    openalex_concept_id: Mapped[str | None] = mapped_column(
-        String(64), unique=True, nullable=True
-    )
+    openalex_concept_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     wikidata_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -97,12 +97,8 @@ class PaperAuthor(Base):
     __tablename__ = "paper_authors"
     __table_args__ = (UniqueConstraint("paper_id", "person_id"),)
 
-    paper_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("papers.id"), primary_key=True
-    )
-    person_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("persons.id"), primary_key=True
-    )
+    paper_id: Mapped[str] = mapped_column(String(36), ForeignKey("papers.id"), primary_key=True)
+    person_id: Mapped[str] = mapped_column(String(36), ForeignKey("persons.id"), primary_key=True)
     author_position: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_corresponding: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -139,5 +135,7 @@ class EntityLink(Base):
     person_id_b: Mapped[str] = mapped_column(String(36), ForeignKey("persons.id"), nullable=False)
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
     method: Mapped[str] = mapped_column(String(64), nullable=False)  # "deterministic" | "heuristic"
-    status: Mapped[str] = mapped_column(String(32), default="pending")  # "pending" | "merged" | "rejected"
+    status: Mapped[str] = mapped_column(
+        String(32), default="pending"
+    )  # "pending" | "merged" | "rejected"
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
