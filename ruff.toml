@@ -1,0 +1,28 @@
+target-version = "py313"
+line-length = 100
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+    "ANN", # flake8-annotations (only selected rules)
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "ANN401", # Dynamically typed expressions (Any) are disallowed
+]
+
+[lint.per-file-ignores]
+"tests/**/*.py" = ["ANN", "S101"]
+"alembic/**/*.py" = ["ANN", "I"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
