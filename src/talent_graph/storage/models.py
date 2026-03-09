@@ -125,6 +125,16 @@ class Repo(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class RepoContributor(Base):
+    """Join table: persons who contributed to a repo (ordered by contribution count)."""
+
+    __tablename__ = "repo_contributors"
+
+    repo_id: Mapped[str] = mapped_column(String(36), ForeignKey("repos.id"), primary_key=True)
+    person_id: Mapped[str] = mapped_column(String(36), ForeignKey("persons.id"), primary_key=True)
+    contributions: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class EntityLink(Base):
     """Cross-source entity resolution candidates awaiting review."""
 

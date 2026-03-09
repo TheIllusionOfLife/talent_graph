@@ -1,17 +1,16 @@
 """Admin endpoints — all require API key."""
 
+import re
+
 from fastapi import APIRouter, BackgroundTasks, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from talent_graph.api.deps import require_api_key
-from talent_graph.ingestion.jobs import ingest_openalex
+from talent_graph.ingestion.jobs import ingest_github, ingest_openalex
+
+_SLUG_RE = re.compile(r"^[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+$")
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_api_key)])
-
-
-class IngestRequest(BaseModel):
-    query: str
-    max_results: int = Field(default=100, ge=1, le=1000)
 
 
 class IngestResponse(BaseModel):
@@ -19,13 +18,48 @@ class IngestResponse(BaseModel):
     message: str
 
 
+class OpenAlexIngestRequest(BaseModel):
+    query: str
+    max_results: int = Field(default=100, ge=1, le=1000)
+
+
+class GitHubIngestRequest(BaseModel):
+    repos: list[str] = Field(
+        description="List of 'owner/repo' slugs to ingest.",
+        min_length=1,
+    )
+
+    @field_validator("repos", mode="before")
+    @classmethod
+    def validate_slugs(cls, v: list[str]) -> list[str]:
+        for slug in v:
+            if not _SLUG_RE.match(slug):
+                raise ValueError(
+                    f"Invalid repo slug {slug!r}. Expected format: 'owner/repo' "
+                    "(alphanumeric, hyphens, underscores, dots only)."
+                )
+        return v
+
+
 @router.post("/ingest/openalex", response_model=IngestResponse)
 async def trigger_openalex_ingest(
-    body: IngestRequest, background_tasks: BackgroundTasks
+    body: OpenAlexIngestRequest, background_tasks: BackgroundTasks
 ) -> IngestResponse:
     """Queue an OpenAlex ingestion job. Returns immediately; runs in background."""
     background_tasks.add_task(ingest_openalex, query=body.query, max_results=body.max_results)
     return IngestResponse(
         status="accepted",
         message=f"Ingestion queued for query '{body.query}' (max_results={body.max_results})",
+    )
+
+
+@router.post("/ingest/github", response_model=IngestResponse)
+async def trigger_github_ingest(
+    body: GitHubIngestRequest, background_tasks: BackgroundTasks
+) -> IngestResponse:
+    """Queue a GitHub ingestion job. Returns immediately; runs in background."""
+    background_tasks.add_task(ingest_github, repos=body.repos)
+    return IngestResponse(
+        status="accepted",
+        message=f"GitHub ingestion queued for {len(body.repos)} repo(s)",
     )

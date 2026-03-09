@@ -9,9 +9,19 @@ from talent_graph.normalize.common_schema import (
     OrgRecord,
     PaperRecord,
     PersonRecord,
+    RepoRecord,
 )
 from talent_graph.storage.id_gen import new_id
-from talent_graph.storage.models import Concept, Org, Paper, PaperAuthor, Person
+from talent_graph.storage.models import (
+    Concept,
+    EntityLink,
+    Org,
+    Paper,
+    PaperAuthor,
+    Person,
+    Repo,
+    RepoContributor,
+)
 
 
 async def upsert_org(session: AsyncSession, org: OrgRecord) -> str:
@@ -162,3 +172,94 @@ async def upsert_paper(session: AsyncSession, paper: PaperRecord) -> str:
         await session.execute(author_stmt)
 
     return paper_db_id
+
+
+async def upsert_repo(
+    session: AsyncSession,
+    repo: RepoRecord,
+    owner_person_id: str | None = None,
+    owner_org_id: str | None = None,
+    raw_metadata: dict | None = None,
+) -> str:
+    """Upsert repo by full_name. Returns the repo's PK.
+
+    Raises ValueError if full_name is empty — ON CONFLICT on NULL/empty never
+    fires in PostgreSQL, causing phantom duplicates on re-ingest.
+    """
+    if not repo.full_name:
+        raise ValueError("full_name is required for upsert_repo")
+    stmt = (
+        insert(Repo)
+        .values(
+            id=new_id(),
+            full_name=repo.full_name,
+            github_repo_id=repo.github_repo_id,
+            description=repo.description,
+            language=repo.language,
+            stars=repo.stars,
+            forks=repo.forks,
+            topics=repo.topics,
+            owner_person_id=owner_person_id,
+            owner_org_id=owner_org_id,
+            raw_metadata=raw_metadata,
+        )
+        .on_conflict_do_update(
+            index_elements=["full_name"],
+            set_={
+                "description": repo.description,
+                "language": repo.language,
+                "stars": repo.stars,
+                "forks": repo.forks,
+                "topics": repo.topics,
+                "github_repo_id": repo.github_repo_id,
+                "owner_person_id": owner_person_id,
+                "owner_org_id": owner_org_id,
+                "raw_metadata": raw_metadata,
+            },
+        )
+        .returning(Repo.id)
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one()
+
+
+async def upsert_repo_contributor(
+    session: AsyncSession,
+    repo_id: str,
+    person_id: str,
+    contributions: int = 0,
+) -> None:
+    """Upsert a repo_contributors join row."""
+    stmt = (
+        insert(RepoContributor)
+        .values(repo_id=repo_id, person_id=person_id, contributions=contributions)
+        .on_conflict_do_update(
+            index_elements=["repo_id", "person_id"],
+            set_={"contributions": contributions},
+        )
+    )
+    await session.execute(stmt)
+
+
+async def upsert_entity_link(
+    session: AsyncSession,
+    person_id_a: str,
+    person_id_b: str,
+    confidence: float,
+    method: str,
+) -> None:
+    """Upsert an entity_links candidate (canonical ordering enforced)."""
+    id_a, id_b = sorted([person_id_a, person_id_b])
+    stmt = (
+        insert(EntityLink)
+        .values(
+            id=new_id(),
+            person_id_a=id_a,
+            person_id_b=id_b,
+            confidence=confidence,
+            method=method,
+            status="pending",
+        )
+        .on_conflict_do_nothing(index_elements=["person_id_a", "person_id_b"])
+    )
+    await session.execute(stmt)

@@ -1,0 +1,20 @@
+[
+  {
+    "login": "octocat",
+    "id": 1,
+    "contributions": 100,
+    "type": "User"
+  },
+  {
+    "login": "contributor1",
+    "id": 2,
+    "contributions": 50,
+    "type": "User"
+  },
+  {
+    "login": "bot-user",
+    "id": 3,
+    "contributions": 10,
+    "type": "Bot"
+  }
+]
