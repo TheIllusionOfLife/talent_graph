@@ -1,0 +1,63 @@
+{
+  "id": "https://openalex.org/W2741809807",
+  "title": "Attention Is All You Need",
+  "publication_year": 2017,
+  "cited_by_count": 95000,
+  "doi": "https://doi.org/10.48550/arXiv.1706.03762",
+  "abstract_inverted_index": {
+    "The": [0],
+    "dominant": [1],
+    "sequence": [2],
+    "transduction": [3]
+  },
+  "authorships": [
+    {
+      "author_position": "first",
+      "author": {
+        "id": "https://openalex.org/A5023888391",
+        "display_name": "Ashish Vaswani",
+        "orcid": null
+      },
+      "institutions": [
+        {
+          "id": "https://openalex.org/I1299303940",
+          "display_name": "Google Brain",
+          "country_code": "US",
+          "type": "company"
+        }
+      ],
+      "is_corresponding": false
+    },
+    {
+      "author_position": "middle",
+      "author": {
+        "id": "https://openalex.org/A5040025832",
+        "display_name": "Noam Shazeer",
+        "orcid": null
+      },
+      "institutions": [
+        {
+          "id": "https://openalex.org/I1299303940",
+          "display_name": "Google Brain",
+          "country_code": "US",
+          "type": "company"
+        }
+      ],
+      "is_corresponding": false
+    }
+  ],
+  "concepts": [
+    {
+      "id": "https://openalex.org/C41008148",
+      "display_name": "Computer science",
+      "level": 0,
+      "score": 0.5
+    },
+    {
+      "id": "https://openalex.org/C119857082",
+      "display_name": "Machine learning",
+      "level": 1,
+      "score": 0.95
+    }
+  ]
+}
