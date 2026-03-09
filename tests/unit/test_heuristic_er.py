@@ -108,4 +108,4 @@ def test_heuristic_confidence_concept_boost() -> None:
     conf_with_concepts = compute_heuristic_confidence(
         a, b, concepts_a=["C1", "C2", "C3"], concepts_b=["C1", "C2", "C3"]
     )
-    assert conf_with_concepts >= conf_no_concepts
+    assert conf_with_concepts > conf_no_concepts

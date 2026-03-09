@@ -205,6 +205,7 @@ async def ingest_github(
                     session,
                     repo_record,
                     owner_person_id=owner_person_id,
+                    raw_metadata=raw_repo,
                 )
                 counts["repos"] += 1
 

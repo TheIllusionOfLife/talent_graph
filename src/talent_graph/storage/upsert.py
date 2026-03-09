@@ -179,6 +179,7 @@ async def upsert_repo(
     repo: RepoRecord,
     owner_person_id: str | None = None,
     owner_org_id: str | None = None,
+    raw_metadata: dict | None = None,
 ) -> str:
     """Upsert repo by full_name. Returns the repo's PK.
 
@@ -200,6 +201,7 @@ async def upsert_repo(
             topics=repo.topics,
             owner_person_id=owner_person_id,
             owner_org_id=owner_org_id,
+            raw_metadata=raw_metadata,
         )
         .on_conflict_do_update(
             index_elements=["full_name"],
@@ -212,6 +214,7 @@ async def upsert_repo(
                 "github_repo_id": repo.github_repo_id,
                 "owner_person_id": owner_person_id,
                 "owner_org_id": owner_org_id,
+                "raw_metadata": raw_metadata,
             },
         )
         .returning(Repo.id)

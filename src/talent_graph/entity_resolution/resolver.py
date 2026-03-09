@@ -13,7 +13,6 @@ Side-effects:
 
 import structlog
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from talent_graph.entity_resolution.deterministic import resolve_deterministic
@@ -24,7 +23,8 @@ from talent_graph.entity_resolution.heuristic import (
 )
 from talent_graph.normalize.common_schema import OrgRecord, PersonRecord
 from talent_graph.storage.id_gen import new_id
-from talent_graph.storage.models import EntityLink, Org, Person
+from talent_graph.storage.models import Org, Person
+from talent_graph.storage.upsert import upsert_entity_link
 
 log = structlog.get_logger()
 
@@ -117,20 +117,13 @@ async def write_heuristic_links(
     )
 
     if best_id and is_queue_candidate(best_conf) and best_id != person.canonical_person_id:
-        id_a, id_b = sorted([person.canonical_person_id, best_id])
-        stmt = (
-            pg_insert(EntityLink)
-            .values(
-                id=new_id(),
-                person_id_a=id_a,
-                person_id_b=id_b,
-                confidence=best_conf,
-                method="heuristic",
-                status="pending",
-            )
-            .on_conflict_do_nothing(index_elements=["person_id_a", "person_id_b"])
+        await upsert_entity_link(
+            session,
+            person_id_a=person.canonical_person_id,
+            person_id_b=best_id,
+            confidence=best_conf,
+            method="heuristic",
         )
-        await session.execute(stmt)
         log.info(
             "er.heuristic.queued",
             name=person.name,
