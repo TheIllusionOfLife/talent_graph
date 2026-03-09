@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy import (
     ARRAY,
     Boolean,
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
@@ -95,7 +96,7 @@ class Paper(Base):
 
 class PaperAuthor(Base):
     __tablename__ = "paper_authors"
-    __table_args__ = (UniqueConstraint("paper_id", "person_id"),)
+    # No __table_args__ — composite PK (paper_id, person_id) already enforces uniqueness
 
     paper_id: Mapped[str] = mapped_column(String(36), ForeignKey("papers.id"), primary_key=True)
     person_id: Mapped[str] = mapped_column(String(36), ForeignKey("persons.id"), primary_key=True)
@@ -128,7 +129,12 @@ class EntityLink(Base):
     """Cross-source entity resolution candidates awaiting review."""
 
     __tablename__ = "entity_links"
-    __table_args__ = (UniqueConstraint("person_id_a", "person_id_b"),)
+    __table_args__ = (
+        UniqueConstraint("person_id_a", "person_id_b"),
+        # Enforce canonical ordering so (A,B) and (B,A) cannot both exist.
+        # Entity resolution code must sort IDs before inserting.
+        CheckConstraint("person_id_a < person_id_b", name="ck_entity_links_ordered_ids"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     person_id_a: Mapped[str] = mapped_column(String(36), ForeignKey("persons.id"), nullable=False)

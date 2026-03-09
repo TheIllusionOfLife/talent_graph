@@ -45,8 +45,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()),
     )
-    op.create_index("ix_persons_openalex_author_id", "persons", ["openalex_author_id"])
-    op.create_index("ix_persons_github_login", "persons", ["github_login"])
+    # Note: openalex_author_id and github_login already have indexes from unique=True constraints
 
     op.create_table(
         "concepts",
@@ -71,7 +70,7 @@ def upgrade() -> None:
         sa.Column("raw_metadata", postgresql.JSONB, nullable=True),
         sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
     )
-    op.create_index("ix_papers_openalex_work_id", "papers", ["openalex_work_id"])
+    # Note: openalex_work_id already has an index from unique=True constraint
     op.create_index("ix_papers_publication_year", "papers", ["publication_year"])
 
     op.create_table(
@@ -80,7 +79,7 @@ def upgrade() -> None:
         sa.Column("person_id", sa.String(36), sa.ForeignKey("persons.id"), primary_key=True),
         sa.Column("author_position", sa.Integer, nullable=True),
         sa.Column("is_corresponding", sa.Boolean, default=False),
-        sa.UniqueConstraint("paper_id", "person_id"),
+        # UniqueConstraint omitted — composite PK (paper_id, person_id) already enforces uniqueness
     )
 
     op.create_table(
@@ -109,6 +108,8 @@ def upgrade() -> None:
         sa.Column("status", sa.String(32), default="pending"),
         sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
         sa.UniqueConstraint("person_id_a", "person_id_b"),
+        # Canonical ordering prevents (A,B) and (B,A) from coexisting as duplicates.
+        sa.CheckConstraint("person_id_a < person_id_b", name="ck_entity_links_ordered_ids"),
     )
 
 

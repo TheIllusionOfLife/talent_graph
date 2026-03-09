@@ -56,6 +56,9 @@ async def test_upsert_paper_calls_merge_paper(builder: GraphBuilder, paper: Pape
         mock_q.return_value = [{"openalex_work_id": "W2741809807"}]
         await builder.upsert_paper(paper)
         assert mock_q.called
+        # Verify Paper MERGE specifically (not just any write)
+        all_queries = [call.args[0] for call in mock_q.call_args_list]
+        assert any("openalex_work_id" in q for q in all_queries)
 
 
 @pytest.mark.asyncio

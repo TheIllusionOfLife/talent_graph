@@ -10,7 +10,17 @@ This is an application of the broader "Graph Discovery Engine" concept, initiall
 
 ## Status
 
-Pre-implementation. Only design documents exist:
+**Sprint 1 complete** (branch: `feat/sprint-1-foundation`, PR #1). Sprint 2 (GitHub + Entity Resolution) is next.
+
+Implemented in Sprint 1:
+- Project scaffold (pyproject.toml, ruff.toml, Docker Compose, Makefile, CI)
+- Postgres models + Alembic migrations (persons, orgs, papers, concepts, repos, entity_links)
+- Neo4j client + graph builder with idempotent MERGE and UNWIND batch queries
+- OpenAlex API client + normalizer + ingestion pipeline
+- FastAPI app with health check + admin ingest endpoint + API-key auth
+- Raw JSON store, structured logging (structlog)
+
+Design documents:
 - `graph_discovery_engine_foundational_vision.md` — Product vision, use cases, market, roadmap
 - `talent_graph_detailed_design.md` — Detailed technical design (architecture, schemas, APIs, algorithms)
 
@@ -80,7 +90,17 @@ talent_graph/
 
 ## Development Commands
 
-Not yet established. When implementation begins, use:
-- `uv` for Python package/venv management
-- `ruff` for formatting and linting
-- `bun` for frontend package management
+```bash
+make install          # Install dependencies (uv sync --extra dev)
+make db               # Start Postgres + Neo4j via Docker Compose
+make migrate          # Run Alembic migrations (alembic upgrade head)
+make api              # Start FastAPI dev server (port 8000)
+make seed             # Ingest sample OpenAlex data
+make test             # Run all tests (pytest)
+make test-unit        # Run unit tests only
+make lint             # Run ruff linter
+make format           # Format code with ruff
+```
+
+- **Python**: `uv` for package/venv management, `ruff` for formatting and linting
+- **Frontend** (Sprint 3+): `bun` for package management, Biome for linting

@@ -42,7 +42,7 @@ class AuthorPosition:
 @dataclass
 class PaperRecord:
     title: str
-    openalex_work_id: str
+    openalex_work_id: str | None  # None when source record lacks an ID (skipped during ingest)
     publication_year: int | None = None
     citation_count: int = 0
     doi: str | None = None

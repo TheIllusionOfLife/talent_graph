@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     neo4j_uri: str = Field(default="bolt://localhost:7687")
     neo4j_user: str = Field(default="neo4j")
     neo4j_password: str = Field(default="talent_graph")
+    neo4j_database: str = Field(default="neo4j")
 
     # API
     api_key: str = Field(default="change-me-in-production")
@@ -42,7 +43,7 @@ class Settings(BaseSettings):
     openalex_email: str = Field(default="")
     github_token: str = Field(default="")
 
-    # CORS (space-separated origins for env-var convenience)
+    # CORS (JSON array in env var, e.g., CORS_ORIGINS='["http://localhost:3000"]')
     cors_origins: list[str] = Field(default=["http://localhost:3000"])
 
     # Logging

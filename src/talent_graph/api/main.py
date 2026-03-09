@@ -42,6 +42,7 @@ def _configure_logging(log_format: str, log_level: str) -> None:
         )
     )
     root = logging.getLogger()
+    root.handlers.clear()
     root.addHandler(handler)
     root.setLevel(level)
 
@@ -53,6 +54,8 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ANN001
+        if settings.api_key == "change-me-in-production":
+            log.warning("api.insecure_default_key", hint="Set API_KEY env var before deployment")
         log.info("app.startup")
         try:
             for constraint in CONSTRAINTS:
@@ -71,10 +74,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    cors_origins = getattr(settings, "cors_origins", ["http://localhost:3000"])
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=cors_origins,
+        allow_origins=settings.cors_origins,
         allow_methods=["*"],
         allow_headers=["*"],
     )

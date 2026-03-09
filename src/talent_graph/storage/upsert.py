@@ -1,6 +1,6 @@
 """SQLAlchemy upsert helpers (ON CONFLICT DO UPDATE — idempotent)."""
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -76,6 +76,7 @@ async def upsert_person(session: AsyncSession, person: PersonRecord) -> str:
                 "email": person.email,
                 "homepage": person.homepage,
                 "org_id": org_id,
+                "updated_at": func.now(),
             },
         )
         .returning(Person.id)
@@ -152,7 +153,10 @@ async def upsert_paper(session: AsyncSession, paper: PaperRecord) -> str:
             )
             .on_conflict_do_update(
                 index_elements=["paper_id", "person_id"],
-                set_={"author_position": authorship.position},
+                set_={
+                    "author_position": authorship.position,
+                    "is_corresponding": authorship.is_corresponding,
+                },
             )
         )
         await session.execute(author_stmt)

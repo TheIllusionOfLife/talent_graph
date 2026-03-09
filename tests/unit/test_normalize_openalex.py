@@ -69,7 +69,7 @@ def test_normalize_work_handles_empty_authorships(work_fixture: dict) -> None:
 
 
 def test_normalize_work_author_position_string_first(work_fixture: dict) -> None:
-    """'first' maps to position 1, 'middle' to 2, 'last' to 99."""
+    """Author positions are assigned sequentially by order of appearance (1-based)."""
     paper = normalize_work(work_fixture)
     positions = [a.position for a in paper.authors]
     assert positions[0] == 1  # "first"

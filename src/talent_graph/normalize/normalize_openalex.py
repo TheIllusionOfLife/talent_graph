@@ -83,7 +83,7 @@ def normalize_work(raw: dict) -> PaperRecord:
 
     return PaperRecord(
         title=raw.get("title", ""),
-        openalex_work_id=_strip_openalex_prefix(raw.get("id")) or "",
+        openalex_work_id=_strip_openalex_prefix(raw.get("id")),  # None when ID is absent
         publication_year=raw.get("publication_year"),
         citation_count=raw.get("cited_by_count", 0),
         doi=raw.get("doi"),

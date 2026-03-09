@@ -32,7 +32,7 @@ async def close_driver() -> None:
 @asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession]:
     driver = get_driver()
-    async with driver.session(database="neo4j") as session:
+    async with driver.session(database=get_settings().neo4j_database) as session:
         yield session
 
 

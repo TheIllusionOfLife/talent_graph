@@ -60,6 +60,12 @@ async def ingest_openalex(
         # Normalize
         paper = normalize_work(raw_work)
 
+        # Skip works that have no OpenAlex ID — storing "" would cause all such records
+        # to collide on the openalex_work_id unique constraint.
+        if not paper.openalex_work_id:
+            log.warning("openalex.work.skipped", reason="missing_id", raw_id=work_id)
+            continue
+
         # Assign canonical IDs (stub: use openalex author ID as person_id for now;
         # Sprint 2 adds full entity resolution via deterministic + heuristic matching)
         for authorship in paper.authors:
@@ -100,8 +106,16 @@ async def ingest_openalex(
             await upsert_paper(session, paper)
             counts["papers"] += 1
 
-        # Upsert to Neo4j
-        await builder.upsert_paper(paper)
+        # Upsert to Neo4j — runs after Postgres commit; eventual consistency is acceptable
+        # because all Neo4j writes are idempotent (MERGE) and a re-run will heal any gap.
+        try:
+            await builder.upsert_paper(paper)
+        except Exception as neo4j_exc:
+            log.warning(
+                "neo4j.upsert.failed",
+                openalex_work_id=paper.openalex_work_id,
+                error=str(neo4j_exc),
+            )
 
     log.info("openalex.ingest.done", **counts)
     return counts

@@ -1,11 +1,11 @@
-.PHONY: db db-stop migrate seed api frontend mlx-server test lint format help
+.PHONY: db db-stop db-reset migrate migrate-new migrate-down seed seed-github refresh api frontend mlx-server test test-unit test-integration lint format typecheck install help
 
 # ─── Infrastructure ───────────────────────────────────────────────────────────
 
 db:
 	docker compose up -d postgres neo4j
 	@echo "Waiting for databases to be healthy..."
-	@docker compose wait postgres neo4j 2>/dev/null || sleep 10
+	@docker compose wait postgres neo4j 2>/dev/null || sleep 10  # requires Docker Compose v2.21+
 	@echo "Databases ready."
 
 db-stop:

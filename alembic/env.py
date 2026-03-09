@@ -4,6 +4,7 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
+from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from talent_graph.config.settings import get_settings
@@ -38,7 +39,7 @@ def do_run_migrations(connection):
 
 
 async def run_async_migrations() -> None:
-    engine = create_async_engine(get_url())
+    engine = create_async_engine(get_url(), poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.run_sync(do_run_migrations)
     await engine.dispose()

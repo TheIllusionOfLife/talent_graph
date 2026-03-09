@@ -1,7 +1,7 @@
 """Health check endpoint — no auth required."""
 
 import sqlalchemy
-from fastapi import APIRouter
+from fastapi import APIRouter, Response, status
 from pydantic import BaseModel
 
 from talent_graph.graph.neo4j_client import verify_connectivity
@@ -17,7 +17,7 @@ class HealthResponse(BaseModel):
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health() -> HealthResponse:
+async def health(response: Response) -> HealthResponse:
     # Postgres
     try:
         async with get_db_session() as session:
@@ -30,4 +30,6 @@ async def health() -> HealthResponse:
     neo4j_status = "ok" if await verify_connectivity() else "error"
 
     overall = "ok" if pg_status == "ok" and neo4j_status == "ok" else "degraded"
+    if overall != "ok":
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return HealthResponse(status=overall, postgres=pg_status, neo4j=neo4j_status)
