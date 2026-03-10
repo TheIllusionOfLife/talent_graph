@@ -63,6 +63,11 @@ def create_app() -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ANN001
         if settings.api_key == "change-me-in-production":
             log.warning("api.insecure_default_key", hint="Set API_KEY env var before deployment")
+        if settings.app_secret == "change-me-in-production":
+            log.warning(
+                "api.insecure_default_secret",
+                hint="Set APP_SECRET env var — owner_hash isolation is broken with this placeholder",
+            )
         log.info("app.startup")
         try:
             for constraint in CONSTRAINTS:

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -14,7 +13,6 @@ from talent_graph.storage.id_gen import new_id
 from talent_graph.storage.models import SavedSearch
 from talent_graph.storage.postgres import get_db_session
 
-log = structlog.get_logger()
 router = APIRouter(prefix="/searches", tags=["searches"])
 
 

@@ -7,14 +7,14 @@ test.describe("Search → Discovery → Person Detail flow", () => {
 		await expect(searchInput).toBeVisible();
 	});
 
-	test("empty search shows no results", async ({ page }) => {
+	test("home page loads successfully", async ({ page }) => {
 		await page.goto("/");
-		// The page loads without error
 		await expect(page).toHaveTitle(/talent/i);
 	});
 
 	test("navigating to discovery page works", async ({ page }) => {
-		await page.goto("/discovery");
-		await expect(page.getByRole("main")).toBeVisible();
+		await page.goto("/discovery/concept/test-id");
+		const heading = page.getByRole("heading", { name: /discovery/i });
+		await expect(heading).toBeVisible();
 	});
 });
