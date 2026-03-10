@@ -6,8 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from starlette.requests import Request
 
 from talent_graph.api.deps import require_api_key
+from talent_graph.api.limiter import limiter
 from talent_graph.explain.explanation_engine import explain_with_meta
 from talent_graph.storage.models import Person, Repo, RepoContributor
 from talent_graph.storage.postgres import get_db_session
@@ -71,7 +73,8 @@ class PersonBrief(BaseModel):
 
 
 @router.get("/{person_id}", response_model=PersonDetail, dependencies=[Depends(require_api_key)])
-async def get_person(person_id: str) -> PersonDetail:
+@limiter.limit("60/minute")
+async def get_person(request: Request, person_id: str) -> PersonDetail:
     """Return full person detail including papers, repos, and org."""
     async with get_db_session() as session:
         result = await session.execute(
@@ -141,7 +144,8 @@ async def get_person(person_id: str) -> PersonDetail:
     response_model=PersonBrief,
     dependencies=[Depends(require_api_key)],
 )
-async def get_person_brief(person_id: str, body: BriefRequest) -> PersonBrief:
+@limiter.limit("20/minute")
+async def get_person_brief(request: Request, person_id: str, body: BriefRequest) -> PersonBrief:
     """Generate an LLM explanation brief for a candidate person.
 
     Always returns 200 with a valid PersonBrief — falls back to template if MLX is down.

@@ -69,6 +69,35 @@ services:
     profiles:
       - app
 
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "-m", "talent_graph.scripts.scheduler"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://talent_graph:talent_graph@postgres:5432/talent_graph
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: talent_graph
+      API_KEY: ${API_KEY:-change-me-in-production}
+      APP_SECRET: ${APP_SECRET:-change-me-in-production}
+      OPENALEX_EMAIL: ${OPENALEX_EMAIL:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      SCHEDULER_OPENALEX_QUERY: ${SCHEDULER_OPENALEX_QUERY:-multimodal dialogue}
+      SCHEDULER_OPENALEX_MAX_RESULTS: ${SCHEDULER_OPENALEX_MAX_RESULTS:-200}
+      SCHEDULER_GITHUB_REPOS: ${SCHEDULER_GITHUB_REPOS:-["huggingface/transformers"]}
+      SCHEDULER_INTERVAL_HOURS: ${SCHEDULER_INTERVAL_HOURS:-6}
+      SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-true}
+      LOG_FORMAT: json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    restart: on-failure
+    profiles:
+      - app
+
 volumes:
   postgres_data:
   neo4j_data:

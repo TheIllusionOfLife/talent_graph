@@ -7,8 +7,10 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from starlette.requests import Request  # noqa: TC002
 
 from talent_graph.api.auth import owner_hash, require_any_api_key
+from talent_graph.api.limiter import limiter
 from talent_graph.storage.id_gen import new_id
 from talent_graph.storage.models import SavedSearch
 from talent_graph.storage.postgres import get_db_session
@@ -43,7 +45,9 @@ def _to_out(search: SavedSearch) -> SavedSearchOut:
 
 
 @router.post("", status_code=201, response_model=SavedSearchOut)
+@limiter.limit("60/minute")
 async def create_saved_search(
+    request: Request,
     body: SavedSearchCreate,
     current_key: str = Depends(require_any_api_key),
 ) -> SavedSearchOut:
@@ -64,7 +68,9 @@ async def create_saved_search(
 
 
 @router.get("", response_model=list[SavedSearchOut])
+@limiter.limit("60/minute")
 async def list_saved_searches(
+    request: Request,
     current_key: str = Depends(require_any_api_key),
 ) -> list[SavedSearchOut]:
     async with get_db_session() as session:
@@ -78,7 +84,9 @@ async def list_saved_searches(
 
 
 @router.get("/{search_id}", response_model=SavedSearchOut)
+@limiter.limit("60/minute")
 async def get_saved_search(
+    request: Request,
     search_id: str,
     current_key: str = Depends(require_any_api_key),
 ) -> SavedSearchOut:
@@ -96,7 +104,9 @@ async def get_saved_search(
 
 
 @router.delete("/{search_id}", status_code=204)
+@limiter.limit("60/minute")
 async def delete_saved_search(
+    request: Request,
     search_id: str,
     current_key: str = Depends(require_any_api_key),
 ) -> None:

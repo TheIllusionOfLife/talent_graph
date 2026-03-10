@@ -23,6 +23,8 @@ dependencies = [
     "jellyfish>=1.1.0",
     "sentence-transformers>=3.0.0",
     "scikit-learn>=1.4,<2.0",
+    "slowapi>=0.1.9",
+    "apscheduler>=3.10,<4",
 ]
 
 [project.optional-dependencies]
@@ -39,6 +41,7 @@ dev = [
 
 [project.scripts]
 talent-graph = "talent_graph.scripts.seed_ingest:main"
+talent-graph-scheduler = "talent_graph.scripts.scheduler:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/talent_graph"]
@@ -62,4 +65,12 @@ no_strict_optional = false
 
 [[tool.mypy.overrides]]
 module = "talent_graph.api.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "talent_graph.ingestion.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "talent_graph.storage.*"
 disallow_untyped_defs = true

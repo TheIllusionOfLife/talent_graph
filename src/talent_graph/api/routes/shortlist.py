@@ -11,8 +11,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
+from starlette.requests import Request  # noqa: TC002
 
 from talent_graph.api.auth import owner_hash, require_any_api_key
+from talent_graph.api.limiter import limiter
 from talent_graph.storage.id_gen import new_id
 from talent_graph.storage.models import Person, Shortlist, ShortlistItem
 from talent_graph.storage.postgres import get_db_session
@@ -70,7 +72,9 @@ class ShortlistSummary(BaseModel):
 
 
 @router.post("", status_code=201, response_model=ShortlistOut)
+@limiter.limit("60/minute")
 async def create_shortlist(
+    request: Request,
     body: ShortlistCreate,
     current_key: str = Depends(require_any_api_key),
 ) -> ShortlistOut:
@@ -99,7 +103,9 @@ async def create_shortlist(
 
 
 @router.get("", response_model=list[ShortlistSummary])
+@limiter.limit("60/minute")
 async def list_shortlists(
+    request: Request,
     current_key: str = Depends(require_any_api_key),
 ) -> list[ShortlistSummary]:
     """List shortlists owned by the caller (with item counts)."""
@@ -126,7 +132,9 @@ async def list_shortlists(
 
 
 @router.get("/{shortlist_id}", response_model=ShortlistOut)
+@limiter.limit("60/minute")
 async def get_shortlist(
+    request: Request,
     shortlist_id: str,
     current_key: str = Depends(require_any_api_key),
 ) -> ShortlistOut:
@@ -146,7 +154,9 @@ async def get_shortlist(
 
 
 @router.delete("/{shortlist_id}", status_code=204)
+@limiter.limit("60/minute")
 async def delete_shortlist(
+    request: Request,
     shortlist_id: str,
     current_key: str = Depends(require_any_api_key),
 ) -> None:
@@ -168,7 +178,9 @@ async def delete_shortlist(
     status_code=201,
     response_model=ShortlistItemOut,
 )
+@limiter.limit("60/minute")
 async def add_item(
+    request: Request,
     shortlist_id: str,
     body: ShortlistItemCreate,
     current_key: str = Depends(require_any_api_key),
@@ -222,7 +234,9 @@ async def add_item(
 
 
 @router.delete("/{shortlist_id}/items/{person_id}", status_code=204)
+@limiter.limit("60/minute")
 async def remove_item(
+    request: Request,
     shortlist_id: str,
     person_id: str,
     current_key: str = Depends(require_any_api_key),
