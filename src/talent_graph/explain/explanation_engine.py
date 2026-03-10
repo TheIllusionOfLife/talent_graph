@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from typing import Any
 
 import structlog
 
@@ -33,7 +34,7 @@ class ExplanationEngine:
         self._semaphore = asyncio.Semaphore(settings.llm_semaphore_size)
         self._cache: dict[tuple, tuple[str, bool]] = {}
 
-    def _cache_key(self, person: object, seed_text: str) -> tuple:
+    def _cache_key(self, person: Any, seed_text: str) -> tuple:
         settings = get_settings()
         seed_hash = hashlib.sha256(seed_text.encode()).hexdigest()[:16]
         updated_at = getattr(person, "updated_at", None)
@@ -55,7 +56,7 @@ class ExplanationEngine:
 
     async def explain_with_meta(
         self,
-        person: object,
+        person: Any,
         seed_text: str,
         score_breakdown: dict[str, float],
         hop_distance: int = 1,
@@ -98,7 +99,7 @@ class ExplanationEngine:
 
     async def explain(
         self,
-        person: object,
+        person: Any,
         seed_text: str,
         score_breakdown: dict[str, float],
         hop_distance: int = 1,
@@ -120,7 +121,7 @@ def _get_engine() -> ExplanationEngine:
 
 
 async def explain(
-    person: object,
+    person: Any,
     seed_text: str,
     score_breakdown: dict[str, float],
     hop_distance: int = 1,
@@ -130,7 +131,7 @@ async def explain(
 
 
 async def explain_with_meta(
-    person: object,
+    person: Any,
     seed_text: str,
     score_breakdown: dict[str, float],
     hop_distance: int = 1,

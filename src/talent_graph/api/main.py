@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import structlog
+import structlog.types
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,7 +23,7 @@ from talent_graph.graph.queries import CONSTRAINTS
 
 def _configure_logging(log_format: str, log_level: str) -> None:
     level = getattr(logging, log_level.upper(), logging.INFO)
-    shared_processors = [
+    shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,

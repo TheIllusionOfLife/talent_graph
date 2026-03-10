@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
+from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncManagedTransaction, AsyncSession
 
 from talent_graph.config.settings import get_settings
 
@@ -53,7 +53,7 @@ async def run_write_query(
     """Execute a write Cypher query in an explicit transaction."""
     params = parameters or {}
 
-    async def _txn(tx: AsyncTransaction) -> list[dict[str, Any]]:
+    async def _txn(tx: AsyncManagedTransaction, /) -> list[dict[str, Any]]:
         result = await tx.run(query, params)
         return [record.data() async for record in result]
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 _TAG_RE = re.compile(r"<[^>]*>")
 
@@ -35,7 +36,7 @@ publication activity, suggesting they may be a {expert_label}.\
 
 
 def build_brief_prompt(
-    person: object,
+    person: Any,
     seed_text: str,
     hop_distance: int,
     score_breakdown: dict[str, float],
@@ -104,7 +105,7 @@ def build_brief_prompt(
 
 
 def render_template_fallback(
-    person: object,
+    person: Any,
     score_breakdown: dict[str, float],
     seed_text: str | None = None,
     hop_distance: int | None = None,

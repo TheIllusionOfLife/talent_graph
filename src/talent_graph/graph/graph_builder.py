@@ -99,7 +99,10 @@ class GraphBuilder:
         for i, ap_a in enumerate(resolved):
             for ap_b in resolved[i + 1 :]:
                 id_a, id_b = sorted(
-                    [ap_a.person.canonical_person_id, ap_b.person.canonical_person_id]
+                    [
+                        ap_a.person.canonical_person_id or "",
+                        ap_b.person.canonical_person_id or "",
+                    ]
                 )
                 coauthor_pairs.append({"person_id_a": id_a, "person_id_b": id_b})
         if coauthor_pairs:
