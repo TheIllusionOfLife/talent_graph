@@ -12,6 +12,7 @@ export function SearchBar({ initialQuery = "" }: SearchBarProps) {
 	const router = useRouter();
 	const [query, setQuery] = useState(initialQuery);
 	const [saving, setSaving] = useState(false);
+	const [savePending, setSavePending] = useState(false);
 	const [saveName, setSaveName] = useState("");
 	const [saveError, setSaveError] = useState<string | null>(null);
 	const [saved, setSaved] = useState(false);
@@ -29,8 +30,9 @@ export function SearchBar({ initialQuery = "" }: SearchBarProps) {
 		e.preventDefault();
 		const name = saveName.trim();
 		const q = query.trim();
-		if (!name || !q) return;
+		if (!name || !q || savePending) return;
 		setSaveError(null);
+		setSavePending(true);
 		try {
 			await createSavedSearch(name, q);
 			setSaving(false);
@@ -38,6 +40,8 @@ export function SearchBar({ initialQuery = "" }: SearchBarProps) {
 			setSaved(true);
 		} catch (err: unknown) {
 			setSaveError(err instanceof Error ? err.message : "Save failed");
+		} finally {
+			setSavePending(false);
 		}
 	}
 
@@ -86,18 +90,19 @@ export function SearchBar({ initialQuery = "" }: SearchBarProps) {
 					/>
 					<button
 						type="submit"
-						disabled={!saveName.trim()}
+						disabled={!saveName.trim() || savePending}
 						className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
 					>
-						Save
+						{savePending ? "Saving…" : "Save"}
 					</button>
 					<button
 						type="button"
+						disabled={savePending}
 						onClick={() => {
 							setSaving(false);
 							setSaveError(null);
 						}}
-						className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700"
+						className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
 					>
 						Cancel
 					</button>

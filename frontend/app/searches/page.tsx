@@ -12,12 +12,20 @@ export default function SavedSearchesPage() {
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
+		let isMounted = true;
 		listSavedSearches()
-			.then(setSearches)
-			.catch((e: unknown) =>
-				setError(e instanceof Error ? e.message : "Load failed"),
-			)
-			.finally(() => setLoading(false));
+			.then((data) => {
+				if (isMounted) setSearches(data);
+			})
+			.catch((e: unknown) => {
+				if (isMounted) setError(e instanceof Error ? e.message : "Load failed");
+			})
+			.finally(() => {
+				if (isMounted) setLoading(false);
+			});
+		return () => {
+			isMounted = false;
+		};
 	}, []);
 
 	async function handleDelete(id: string) {

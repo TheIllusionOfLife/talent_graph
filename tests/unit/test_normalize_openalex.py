@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -11,8 +12,8 @@ FIXTURE_DIR = Path(__file__).parent.parent / "fixtures"
 
 
 @pytest.fixture
-def work_fixture() -> dict:
-    return json.loads((FIXTURE_DIR / "openalex_work.json").read_text())
+def work_fixture() -> dict[str, Any]:
+    return cast("dict[str, Any]", json.loads((FIXTURE_DIR / "openalex_work.json").read_text()))
 
 
 def test_normalize_work_returns_paper_record(work_fixture: dict) -> None:

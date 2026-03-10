@@ -30,7 +30,7 @@ def postgres_container():
 @pytest.fixture(scope="session")
 def postgres_url(postgres_container: PostgresContainer) -> str:
     """Return the async DB URL for the session-scoped testcontainer."""
-    sync_url = postgres_container.get_connection_url()
+    sync_url: str = postgres_container.get_connection_url()
     return sync_url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
 
 

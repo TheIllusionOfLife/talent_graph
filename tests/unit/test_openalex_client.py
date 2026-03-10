@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 import respx
@@ -13,8 +14,8 @@ FIXTURE_DIR = Path(__file__).parent.parent / "fixtures"
 
 
 @pytest.fixture
-def work_fixture() -> dict:
-    return json.loads((FIXTURE_DIR / "openalex_work.json").read_text())
+def work_fixture() -> dict[str, Any]:
+    return cast("dict[str, Any]", json.loads((FIXTURE_DIR / "openalex_work.json").read_text()))
 
 
 @pytest.fixture

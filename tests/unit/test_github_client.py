@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 import respx
@@ -13,18 +14,18 @@ FIXTURE_DIR = Path(__file__).parent.parent / "fixtures"
 
 
 @pytest.fixture
-def repo_fixture() -> dict:
-    return json.loads((FIXTURE_DIR / "github_repo.json").read_text())
+def repo_fixture() -> dict[str, Any]:
+    return cast("dict[str, Any]", json.loads((FIXTURE_DIR / "github_repo.json").read_text()))
 
 
 @pytest.fixture
-def user_fixture() -> dict:
-    return json.loads((FIXTURE_DIR / "github_user.json").read_text())
+def user_fixture() -> dict[str, Any]:
+    return cast("dict[str, Any]", json.loads((FIXTURE_DIR / "github_user.json").read_text()))
 
 
 @pytest.fixture
-def contributors_fixture() -> list:
-    return json.loads((FIXTURE_DIR / "github_contributors.json").read_text())
+def contributors_fixture() -> list[Any]:
+    return cast("list[Any]", json.loads((FIXTURE_DIR / "github_contributors.json").read_text()))
 
 
 @pytest.fixture
