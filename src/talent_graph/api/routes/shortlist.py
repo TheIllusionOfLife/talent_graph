@@ -212,9 +212,10 @@ async def add_item(
         try:
             await session.flush()
         except IntegrityError as exc:
-            # Unwrap to check for unique violation specifically
+            # asyncpg wraps the error in a SQLAlchemy dialect class; use pgcode (23505) instead
             orig = getattr(exc, "orig", None)
-            if isinstance(orig, asyncpg.exceptions.UniqueViolationError):
+            pgcode = getattr(orig, "pgcode", None) or getattr(orig, "sqlstate", None)
+            if pgcode == "23505" or isinstance(orig, asyncpg.exceptions.UniqueViolationError):
                 raise HTTPException(status_code=409, detail="Person already in shortlist") from exc
             raise
 

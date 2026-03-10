@@ -74,7 +74,7 @@ async def test_e2e_full_flow(
             return_value=zero_vec,
         ),
         patch(
-            "talent_graph.storage.vector_store.search_similar",
+            "talent_graph.api.routes.search.search_similar",
             new_callable=AsyncMock,
             return_value=mock_rows,
         ),

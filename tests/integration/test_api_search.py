@@ -43,7 +43,7 @@ async def test_search_returns_results(
             return_value=[0.0] * 384,
         ),
         patch(
-            "talent_graph.storage.vector_store.search_similar",
+            "talent_graph.api.routes.search.search_similar",
             new_callable=AsyncMock,
             return_value=mock_rows,
         ),

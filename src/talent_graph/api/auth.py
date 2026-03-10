@@ -22,8 +22,24 @@ async def require_api_key(api_key: str | None = Security(_api_key_header)) -> st
     return api_key
 
 
+async def require_any_api_key(api_key: str | None = Security(_api_key_header)) -> str:
+    """Dependency: accepts any non-empty API key (treats each key as a distinct user identity).
+
+    Use this on multi-tenant routes (e.g. shortlists, saved searches) where each caller's
+    key is hashed to derive an owner token, enabling per-user isolation without a user registry.
+    Raises 401 only when no key is provided.
+    """
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing API key",
+            headers={"WWW-Authenticate": "ApiKey"},
+        )
+    return api_key
+
+
 async def require_api_key_returning(
     api_key: str | None = Security(_api_key_header),
 ) -> str:
     """Dependency: validates X-API-Key and returns the key string for use in handler body."""
-    return await require_api_key(api_key)
+    return await require_any_api_key(api_key)
