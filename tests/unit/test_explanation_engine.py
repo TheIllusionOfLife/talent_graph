@@ -1,13 +1,16 @@
 """TDD tests for explain/explanation_engine.py."""
 
 import asyncio
+import hashlib
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from talent_graph.config.settings import get_settings
 from talent_graph.explain.explanation_engine import ExplanationEngine, explain
 from talent_graph.explain.llm_client import LLMUnavailableError
+from talent_graph.explain.prompt_templates import PROMPT_VERSION
 
 
 def _make_person(
@@ -115,13 +118,8 @@ class TestExplanationEngine:
         cached_text = "Cached explanation"
 
         # Pre-populate cache with the key the engine would generate
-        import hashlib
-
-        from talent_graph.explain.prompt_templates import PROMPT_VERSION
-        from talent_graph.config.settings import get_settings
-
         settings = get_settings()
-        seed_hash = hashlib.sha256("attention mechanism".encode()).hexdigest()[:16]
+        seed_hash = hashlib.sha256(b"attention mechanism").hexdigest()[:16]
         paper_ids_hash = hashlib.sha256(b"").hexdigest()[:8]  # person.papers = []
         cache_key = (
             person.id,

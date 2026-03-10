@@ -183,7 +183,7 @@ class ShortlistItem(Base):
     """A person pinned to a shortlist with optional note and ordering."""
 
     __tablename__ = "shortlist_items"
-    __table_args__ = (UniqueConstraint("shortlist_id", "person_id"),)
+    # No __table_args__ needed: composite PK (shortlist_id, person_id) already enforces uniqueness.
 
     shortlist_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("shortlists.id", ondelete="CASCADE"), primary_key=True

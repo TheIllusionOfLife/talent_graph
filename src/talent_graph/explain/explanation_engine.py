@@ -68,7 +68,10 @@ class ExplanationEngine:
         key = self._cache_key(person, seed_text)
         if key in self._cache:
             log.debug("explanation.cache_hit", person_id=person.id)
-            return self._cache[key]
+            # Move to end to maintain LRU order
+            value = self._cache.pop(key)
+            self._cache[key] = value
+            return value
 
         # Evict oldest entry if cache is full
         if len(self._cache) >= _CACHE_MAXSIZE:

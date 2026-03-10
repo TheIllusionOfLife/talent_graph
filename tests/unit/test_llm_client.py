@@ -1,11 +1,13 @@
 """TDD tests for explain/llm_client.py."""
 
+from unittest.mock import patch
+
+import httpx
 import pytest
 import respx
 from httpx import Response
 
 from talent_graph.explain.llm_client import LLMClient, LLMUnavailableError
-
 
 BASE_URL = "http://localhost:8080/v1"
 CHAT_URL = f"{BASE_URL}/chat/completions"
@@ -76,17 +78,13 @@ class TestLLMClient:
     @pytest.mark.asyncio
     async def test_connection_error_raises_llm_unavailable(self):
         """Connection refused should raise LLMUnavailableError, not propagate ConnectError."""
-        import httpx
-        from unittest.mock import AsyncMock, patch
-
         client = LLMClient(base_url="http://localhost:19999/v1", timeout=1)
 
         async def raise_connect_error(*args, **kwargs):
             raise httpx.ConnectError("Connection refused")
 
-        with patch("httpx.AsyncClient.post", new=raise_connect_error):
-            with pytest.raises(LLMUnavailableError):
-                await client.complete("sys", "user")
+        with patch("httpx.AsyncClient.post", new=raise_connect_error), pytest.raises(LLMUnavailableError):
+            await client.complete("sys", "user")
 
     @respx.mock
     @pytest.mark.asyncio

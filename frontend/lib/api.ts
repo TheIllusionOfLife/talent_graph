@@ -6,6 +6,7 @@ import type {
 	PersonDetail,
 	RankMode,
 	SearchResponse,
+	ShortlistItemOut,
 	ShortlistOut,
 	ShortlistSummary,
 } from "@/types";
@@ -28,6 +29,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 	if (!res.ok) {
 		const detail = await res.text().catch(() => res.statusText);
 		throw new Error(`API ${res.status}: ${detail}`);
+	}
+
+	if (res.status === 204) {
+		return undefined as T;
 	}
 
 	return res.json() as Promise<T>;
@@ -93,8 +98,8 @@ export async function addToShortlist(
 	shortlistId: string,
 	personId: string,
 	note?: string,
-): Promise<void> {
-	await apiFetch<void>(`/shortlists/${shortlistId}/items`, {
+): Promise<ShortlistItemOut> {
+	return apiFetch<ShortlistItemOut>(`/shortlists/${shortlistId}/items`, {
 		method: "POST",
 		body: JSON.stringify({ person_id: personId, note }),
 	});

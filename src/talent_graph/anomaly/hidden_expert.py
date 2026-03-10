@@ -148,14 +148,17 @@ async def _fetch_feature_rows(current_year: int) -> list[PersonFeatureRow]:
 
 
 async def _persist_scores(scores: dict[str, float | None]) -> None:
-    """Write hidden_expert_score back to each Person row."""
+    """Write hidden_expert_score back to each Person row (bulk update)."""
     from sqlalchemy import update
 
+    if not scores:
+        return
+
     async with get_db_session() as session:
-        for person_id, score in scores.items():
-            await session.execute(
-                update(Person).where(Person.id == person_id).values(hidden_expert_score=score)
-            )
+        await session.execute(
+            update(Person),
+            [{"id": pid, "hidden_expert_score": score} for pid, score in scores.items()],
+        )
 
 
 async def compute_hidden_expert_scores(current_year: int | None = None) -> int:

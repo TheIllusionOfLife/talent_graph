@@ -1,7 +1,6 @@
 """TDD tests for anomaly/hidden_expert.py."""
 
-import math
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -125,7 +124,7 @@ class TestHiddenExpertDetector:
         detector = HiddenExpertDetector()
         detector.fit(rows)
         scores = detector.scores(rows)
-        for pid, score in scores.items():
+        for _pid, score in scores.items():
             assert score is not None
             assert 0.0 <= score <= 1.0
 

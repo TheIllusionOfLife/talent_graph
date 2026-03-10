@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from talent_graph.api.deps import require_api_key
 from talent_graph.storage.id_gen import new_id
@@ -90,23 +90,26 @@ async def create_shortlist(body: ShortlistCreate) -> ShortlistOut:
 
 @router.get("", response_model=list[ShortlistSummary], dependencies=[Depends(require_api_key)])
 async def list_shortlists() -> list[ShortlistSummary]:
-    """List all shortlists."""
+    """List all shortlists with item counts (single aggregated query)."""
     async with get_db_session() as session:
-        result = await session.execute(select(Shortlist).order_by(Shortlist.created_at.desc()))
-        shortlists = result.scalars().all()
-
-    summaries = []
-    for sl in shortlists:
-        summaries.append(
-            ShortlistSummary(
-                id=sl.id,
-                name=sl.name,
-                description=sl.description,
-                created_at=sl.created_at,
-                item_count=len(sl.items) if sl.items else 0,
-            )
+        result = await session.execute(
+            select(Shortlist, func.count(ShortlistItem.person_id).label("item_count"))
+            .outerjoin(ShortlistItem, ShortlistItem.shortlist_id == Shortlist.id)
+            .group_by(Shortlist.id)
+            .order_by(Shortlist.created_at.desc())
         )
-    return summaries
+        rows = result.all()
+
+    return [
+        ShortlistSummary(
+            id=sl.id,
+            name=sl.name,
+            description=sl.description,
+            created_at=sl.created_at,
+            item_count=count,
+        )
+        for sl, count in rows
+    ]
 
 
 @router.get("/{shortlist_id}", response_model=ShortlistOut, dependencies=[Depends(require_api_key)])

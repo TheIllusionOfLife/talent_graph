@@ -1,5 +1,7 @@
 """GET /person/{id} and POST /person/{id}/brief routes."""
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -55,7 +57,7 @@ class BriefRequest(BaseModel):
 
 
 class EvidenceItem(BaseModel):
-    type: str  # "paper" | "repo" | "org"
+    type: Literal["paper", "repo", "org"]
     label: str
     detail: str | None = None
 

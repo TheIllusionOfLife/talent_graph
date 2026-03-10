@@ -69,8 +69,11 @@ def build_brief_prompt(
     org = getattr(person, "org", None)
     org_line = f"Affiliation: {org.name}\n" if org else ""
 
+    # Sanitize seed_text: normalize whitespace to prevent prompt injection
+    safe_seed_text = " ".join(seed_text.split())[:500]
+
     user_prompt = _USER_TEMPLATE.format(
-        seed_text=seed_text,
+        seed_text=safe_seed_text,
         name=person.name,
         org_line=org_line,
         paper_count=len(papers),

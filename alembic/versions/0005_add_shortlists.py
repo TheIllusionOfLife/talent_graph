@@ -51,7 +51,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.UniqueConstraint("shortlist_id", "person_id", name="uq_shortlist_items"),
+        # No UniqueConstraint needed: composite PK already enforces uniqueness.
     )
 
 

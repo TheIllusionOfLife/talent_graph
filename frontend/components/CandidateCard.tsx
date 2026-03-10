@@ -43,8 +43,13 @@ export function CandidateCard({ candidate, seedText }: CandidateCardProps) {
 
 	async function handleOpenDropdown() {
 		if (!shortlists) {
-			const data = await listShortlists().catch(() => []);
-			setShortlists(data);
+			try {
+				const data = await listShortlists();
+				setShortlists(data);
+			} catch (e) {
+				setAddError(e instanceof Error ? e.message : "Failed to load shortlists");
+				setShortlists([]);
+			}
 		}
 		setShowDropdown((v) => !v);
 	}
