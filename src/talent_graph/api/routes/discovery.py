@@ -228,7 +228,9 @@ async def discover_candidates(
         else:
             sem_sim = 0.5  # neutral fallback
 
-        source_count = sum(1 for v in [person.openalex_author_id, person.github_login] if v)
+        source_count = sum(
+            1 for v in [person.openalex_author_id, person.github_login, person.orcid] if v
+        )
 
         features = PersonFeatures(
             semantic_similarity=sem_sim,

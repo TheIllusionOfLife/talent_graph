@@ -42,7 +42,6 @@ class PersonDetail(BaseModel):
     openalex_author_id: str | None = None
     github_login: str | None = None
     orcid: str | None = None
-    email: str | None = None
     homepage: str | None = None
     hidden_expert_score: float | None = None
     org: OrgOut | None = None
@@ -70,6 +69,7 @@ async def get_person(person_id: str) -> PersonDetail:
             select(Repo)
             .join(RepoContributor, RepoContributor.repo_id == Repo.id)
             .where(RepoContributor.person_id == person_id)
+            .order_by(RepoContributor.contributions.desc(), Repo.stars.desc(), Repo.id)
             .limit(20)
         )
         repos = repo_result.scalars().all()
@@ -80,7 +80,6 @@ async def get_person(person_id: str) -> PersonDetail:
         openalex_author_id=person.openalex_author_id,
         github_login=person.github_login,
         orcid=person.orcid,
-        email=person.email,
         homepage=person.homepage,
         hidden_expert_score=person.hidden_expert_score,
         org=OrgOut(
