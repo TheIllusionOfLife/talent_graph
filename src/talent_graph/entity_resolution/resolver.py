@@ -23,7 +23,7 @@ from talent_graph.entity_resolution.heuristic import (
 )
 from talent_graph.normalize.common_schema import OrgRecord, PersonRecord
 from talent_graph.storage.id_gen import new_id
-from talent_graph.storage.models import Org, Person
+from talent_graph.storage.models import Org, Paper, PaperAuthor, Person
 from talent_graph.storage.upsert import upsert_entity_link
 
 log = structlog.get_logger()
@@ -59,10 +59,25 @@ async def _find_heuristic_match(
     best_conf: float = 0.0
 
     for row in rows:
+        # Fetch concept lists for this candidate via paper_authors join
+        concepts_result = await session.execute(
+            select(Paper.concepts)
+            .join(PaperAuthor, PaperAuthor.paper_id == Paper.id)
+            .where(PaperAuthor.person_id == row.id)
+        )
+        candidate_concepts: list[str] = []
+        for (paper_concepts,) in concepts_result:
+            if paper_concepts:
+                candidate_concepts.extend(paper_concepts)
+
         candidate_org = OrgRecord(name=row.org_name) if row.org_name else None
         candidate = PersonRecord(name=row.name, org=candidate_org)
-        # TODO: thread real concept lists from DB (Sprint 3 — requires paper_authors join)
-        conf = compute_heuristic_confidence(person, candidate, concepts_a=[], concepts_b=[])
+        conf = compute_heuristic_confidence(
+            person,
+            candidate,
+            concepts_a=[],
+            concepts_b=candidate_concepts,
+        )
         if conf > best_conf:
             best_conf = conf
             best_id = row.id

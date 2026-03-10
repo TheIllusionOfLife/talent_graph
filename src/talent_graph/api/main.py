@@ -12,6 +12,7 @@ from talent_graph.api.routes import admin, health
 from talent_graph.api.routes.discovery import router as discovery_router
 from talent_graph.api.routes.person import router as person_router
 from talent_graph.api.routes.search import router as search_router
+from talent_graph.api.routes.searches import router as searches_router
 from talent_graph.api.routes.shortlist import router as shortlist_router
 from talent_graph.config.settings import get_settings
 from talent_graph.features.person_features import init_prestige_names
@@ -94,5 +95,6 @@ def create_app() -> FastAPI:
     app.include_router(person_router)
     app.include_router(discovery_router)
     app.include_router(shortlist_router)
+    app.include_router(searches_router)
 
     return app

@@ -31,6 +31,7 @@ dev = [
     "pytest-asyncio>=0.25.0",
     "pytest-cov>=6.0.0",
     "ruff>=0.8.0",
+    "mypy>=1.13.0",
     "respx>=0.21.0",
     "factory-boy>=3.3.1",
     "testcontainers[postgres,neo4j]>=4.9.0",
@@ -50,3 +51,11 @@ addopts = ["--cov=src/talent_graph", "--cov-report=term-missing", "-v"]
 [tool.coverage.run]
 source = ["src/talent_graph"]
 omit = ["*/tests/*", "*/migrations/*"]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["src/"]
+ignore_missing_imports = true
+warn_unused_configs = true
+warn_return_any = false
+no_strict_optional = false
