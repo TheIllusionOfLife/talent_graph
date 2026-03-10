@@ -7,8 +7,10 @@ from typing import Literal
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
+from starlette.requests import Request
 
 from talent_graph.api.deps import require_api_key
+from talent_graph.api.limiter import limiter
 from talent_graph.ingestion.jobs import ingest_github, ingest_openalex
 from talent_graph.storage.models import EntityLink, Paper, Person, Repo
 from talent_graph.storage.postgres import get_db_session
@@ -77,8 +79,9 @@ class AdminStats(BaseModel):
 
 
 @router.post("/ingest/openalex", response_model=IngestResponse)
+@limiter.limit("5/minute")
 async def trigger_openalex_ingest(
-    body: OpenAlexIngestRequest, background_tasks: BackgroundTasks
+    request: Request, body: OpenAlexIngestRequest, background_tasks: BackgroundTasks
 ) -> IngestResponse:
     """Queue an OpenAlex ingestion job. Returns immediately; runs in background."""
     background_tasks.add_task(ingest_openalex, query=body.query, max_results=body.max_results)
@@ -89,8 +92,9 @@ async def trigger_openalex_ingest(
 
 
 @router.post("/ingest/github", response_model=IngestResponse)
+@limiter.limit("5/minute")
 async def trigger_github_ingest(
-    body: GitHubIngestRequest, background_tasks: BackgroundTasks
+    request: Request, body: GitHubIngestRequest, background_tasks: BackgroundTasks
 ) -> IngestResponse:
     """Queue a GitHub ingestion job. Returns immediately; runs in background."""
     background_tasks.add_task(ingest_github, repos=body.repos)
@@ -104,7 +108,8 @@ async def trigger_github_ingest(
 
 
 @router.get("/stats", response_model=AdminStats)
-async def get_stats() -> AdminStats:
+@limiter.limit("60/minute")
+async def get_stats(request: Request) -> AdminStats:
     """Return system-wide counts for the admin dashboard."""
     async with get_db_session() as session:
         person_count = (
@@ -130,7 +135,9 @@ async def get_stats() -> AdminStats:
 
 
 @router.get("/entity-links", response_model=EntityLinkPage)
+@limiter.limit("60/minute")
 async def list_entity_links(
+    request: Request,
     status: Literal["pending", "merged", "rejected"] = Query(default="pending"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -198,12 +205,14 @@ async def _resolve_entity_link(
 
 
 @router.post("/entity-links/{link_id}/approve", response_model=EntityLinkOut)
-async def approve_entity_link(link_id: str) -> EntityLinkOut:
+@limiter.limit("60/minute")
+async def approve_entity_link(request: Request, link_id: str) -> EntityLinkOut:
     """Approve a pending entity link (marks as merged)."""
     return await _resolve_entity_link(link_id, "merged")
 
 
 @router.post("/entity-links/{link_id}/reject", response_model=EntityLinkOut)
-async def reject_entity_link(link_id: str) -> EntityLinkOut:
+@limiter.limit("60/minute")
+async def reject_entity_link(request: Request, link_id: str) -> EntityLinkOut:
     """Reject a pending entity link."""
     return await _resolve_entity_link(link_id, "rejected")

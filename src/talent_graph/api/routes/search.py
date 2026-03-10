@@ -2,8 +2,10 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from starlette.requests import Request
 
 from talent_graph.api.deps import require_api_key
+from talent_graph.api.limiter import limiter
 from talent_graph.embeddings.generator import encode_one_async
 from talent_graph.embeddings.text_builder import build_query_text
 from talent_graph.storage.postgres import get_db_session
@@ -24,7 +26,9 @@ class SearchResponse(BaseModel):
 
 
 @router.get("", response_model=SearchResponse, dependencies=[Depends(require_api_key)])
+@limiter.limit("30/minute")
 async def search_persons(
+    request: Request,
     q: str = Query(..., min_length=1, max_length=2048, description="Free-text search query"),
     limit: int = Query(default=20, ge=1, le=100),
 ) -> SearchResponse:

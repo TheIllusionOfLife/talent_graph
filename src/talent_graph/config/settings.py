@@ -52,6 +52,13 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO")
     log_format: str = Field(default="json")  # "json" | "text"
 
+    # Scheduler
+    scheduler_openalex_query: str = Field(default="multimodal dialogue")
+    scheduler_openalex_max_results: int = Field(default=200, ge=1, le=1000)
+    scheduler_github_repos: list[str] = Field(default=["huggingface/transformers"])
+    scheduler_interval_hours: int = Field(default=6, ge=1)
+    scheduler_enabled: bool = Field(default=True)
+
 
 @lru_cache
 def get_settings() -> Settings:

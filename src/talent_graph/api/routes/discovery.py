@@ -9,8 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from starlette.requests import Request
 
 from talent_graph.api.deps import require_api_key
+from talent_graph.api.limiter import limiter
 from talent_graph.embeddings.generator import encode_one_async
 from talent_graph.embeddings.text_builder import build_person_text, build_query_text
 from talent_graph.explain.explanation_engine import explain as generate_explanation
@@ -157,7 +159,9 @@ async def _resolve_seed(entity_type: str, entity_id: str) -> tuple[str | None, s
     response_model=DiscoveryResponse,
     dependencies=[Depends(require_api_key)],
 )
+@limiter.limit("20/minute")
 async def discover_candidates(
+    request: Request,
     entity_type: Literal["paper", "person", "concept"],
     entity_id: str,
     mode: RankMode = Query(default=RankMode.STANDARD),

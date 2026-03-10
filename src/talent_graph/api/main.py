@@ -8,7 +8,11 @@ import structlog
 import structlog.types
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
+from talent_graph.api.limiter import limiter
 from talent_graph.api.routes import admin, health
 from talent_graph.api.routes.discovery import router as discovery_router
 from talent_graph.api.routes.person import router as person_router
@@ -87,6 +91,10 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+
+    app.state.limiter = limiter
+    app.add_middleware(SlowAPIMiddleware)
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
     app.add_middleware(
         CORSMiddleware,
