@@ -1,6 +1,7 @@
 """GET /discovery/{entity_type}/{entity_id} — graph-based candidate ranking."""
 
 from datetime import datetime
+from typing import Literal
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from talent_graph.api.deps import require_api_key
-from talent_graph.embeddings.generator import encode_one
+from talent_graph.embeddings.generator import encode_one_async
 from talent_graph.embeddings.text_builder import build_person_text, build_query_text
 from talent_graph.features.person_features import (
     PersonFeatures,
@@ -27,8 +28,11 @@ from talent_graph.storage.postgres import get_db_session
 log = structlog.get_logger()
 router = APIRouter(prefix="/discovery", tags=["discovery"])
 
-_CURRENT_YEAR = datetime.now().year
 _RECENT_YEARS = 2
+
+
+def _current_year() -> int:
+    return datetime.now().year
 
 
 # ── Cypher queries ──────────────────────────────────────────────────────────
@@ -101,7 +105,7 @@ def _graph_proximity(hops: int) -> float:
 
 
 def _recent_papers(papers: list) -> int:
-    cutoff = _CURRENT_YEAR - _RECENT_YEARS
+    cutoff = _current_year() - _RECENT_YEARS
     return sum(1 for p in papers if p.publication_year and p.publication_year >= cutoff)
 
 
@@ -150,23 +154,20 @@ async def _resolve_seed(
     dependencies=[Depends(require_api_key)],
 )
 async def discover_candidates(
-    entity_type: str,
+    entity_type: Literal["paper", "person", "concept"],
     entity_id: str,
     mode: RankMode = Query(default=RankMode.STANDARD),
     limit: int = Query(default=20, ge=1, le=100),
 ) -> DiscoveryResponse:
     """Find and rank candidate persons related to a seed entity."""
-    if entity_type not in _QUERY_MAP:
-        raise HTTPException(status_code=400, detail=f"Unknown entity_type: {entity_type}")
-
     # 1. Resolve seed (single DB round-trip)
     neo4j_seed_id, seed_text = await _resolve_seed(entity_type, entity_id)
 
     if neo4j_seed_id is None:
         raise HTTPException(status_code=404, detail="Seed entity not found")
 
-    # 2. Embed seed text
-    query_vec = encode_one(seed_text) if seed_text else [0.0] * 384
+    # 2. Embed seed text (offloaded to thread pool — inference is CPU-bound)
+    query_vec = await encode_one_async(seed_text) if seed_text else [0.0] * 384
 
     # 3. Get candidate person_ids from Neo4j graph traversal
     try:
@@ -176,7 +177,7 @@ async def discover_candidates(
         )
     except Exception as exc:
         log.warning("discovery.neo4j.failed", error=str(exc))
-        graph_rows = []
+        raise HTTPException(status_code=503, detail="Graph database unavailable") from exc
 
     if not graph_rows:
         return DiscoveryResponse(
@@ -212,15 +213,16 @@ async def discover_candidates(
         total_citations = sum(p.citation_count for p in papers)
         recent_count = _recent_papers(papers)
         # Use earliest publication year as career start to compute career length
+        now = _current_year()
         first_year = min(
             (p.publication_year for p in papers if p.publication_year),
-            default=_CURRENT_YEAR,
+            default=now,
         )
-        years_active = max(1, _CURRENT_YEAR - first_year + 1)
+        years_active = max(1, now - first_year + 1)
 
         # Semantic similarity: use candidate's stored embedding vs query_vec
         if person.embedding:
-            dot = sum(a * b for a, b in zip(person.embedding, query_vec, strict=False))
+            dot = sum(a * b for a, b in zip(person.embedding, query_vec, strict=True))
             sem_sim = max(0.0, min(1.0, (dot + 1.0) / 2.0))
         else:
             sem_sim = 0.5  # neutral fallback
@@ -233,7 +235,7 @@ async def discover_candidates(
             semantic_similarity=sem_sim,
             graph_proximity=_graph_proximity(hops),
             novelty=compute_novelty(total_citations, len(papers)),
-            growth=compute_growth(recent_count, len(papers), _CURRENT_YEAR - years_active + 1),
+            growth=compute_growth(recent_count, len(papers), years_active),
             evidence_quality=compute_evidence_quality(source_count),
             credibility=compute_credibility(person.org.name if person.org else None),
         )

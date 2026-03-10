@@ -4,7 +4,7 @@ import pytest
 
 from talent_graph.features.person_features import PersonFeatures
 from talent_graph.ranking.modes import RankMode
-from talent_graph.ranking.scorer import score_candidate, WEIGHTS
+from talent_graph.ranking.scorer import WEIGHTS, score_candidate
 
 
 class TestRankMode:
@@ -66,14 +66,14 @@ class TestWeights:
 
 class TestScoreCandidate:
     def _features(self, **kwargs) -> PersonFeatures:
-        defaults = dict(
-            semantic_similarity=0.5,
-            graph_proximity=0.5,
-            novelty=0.5,
-            growth=0.5,
-            evidence_quality=0.5,
-            credibility=0.5,
-        )
+        defaults: dict[str, float] = {
+            "semantic_similarity": 0.5,
+            "graph_proximity": 0.5,
+            "novelty": 0.5,
+            "growth": 0.5,
+            "evidence_quality": 0.5,
+            "credibility": 0.5,
+        }
         defaults.update(kwargs)
         return PersonFeatures(**defaults)
 

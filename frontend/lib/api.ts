@@ -7,8 +7,10 @@ import type {
 	SearchResponse,
 } from "@/types";
 
+// BASE_URL is NEXT_PUBLIC so it can be configured per-environment.
+// API_KEY must NOT use the NEXT_PUBLIC_ prefix — it stays server-side only.
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "change-me-in-production";
+const API_KEY = process.env.API_KEY ?? "change-me-in-production";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 	const res = await fetch(`${BASE_URL}${path}`, {

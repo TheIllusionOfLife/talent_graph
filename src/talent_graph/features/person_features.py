@@ -65,14 +65,14 @@ def compute_growth(recent_paper_count: int, total_paper_count: int, years_active
 def compute_evidence_quality(source_count: int) -> float:
     """Cross-source corroboration count mapped to [0, 1].
 
-    0 sources → 0.0, 1 source → ~0.5, ≥3 sources → 1.0.
+    0 sources → 0.0, 1 source → 0.5, 2 sources → 0.75, ≥3 sources → 1.0.
     """
     if source_count <= 0:
         return 0.0
     if source_count >= 3:
         return 1.0
-    # Linear interpolation between 1 and 3
-    return source_count / 3.0 * 1.0 + (1 - source_count / 3.0) * 0.0
+    # Linear interpolation between 0.5 (1 source) and 1.0 (3 sources)
+    return 0.5 + (source_count - 1) * 0.25
 
 
 def compute_credibility(org_name: str | None) -> float:

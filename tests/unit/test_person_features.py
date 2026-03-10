@@ -3,11 +3,11 @@
 import pytest
 
 from talent_graph.features.person_features import (
+    PersonFeatures,
     compute_credibility,
     compute_evidence_quality,
     compute_growth,
     compute_novelty,
-    PersonFeatures,
 )
 
 

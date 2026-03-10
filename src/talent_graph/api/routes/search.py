@@ -1,10 +1,10 @@
 """GET /search — embed query and return ANN-ranked persons."""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from talent_graph.api.deps import require_api_key
-from talent_graph.embeddings.generator import encode_one
+from talent_graph.embeddings.generator import encode_one_async
 from talent_graph.embeddings.text_builder import build_query_text
 from talent_graph.storage.postgres import get_db_session
 from talent_graph.storage.vector_store import search_similar
@@ -30,7 +30,9 @@ async def search_persons(
 ) -> SearchResponse:
     """Embed the query and return persons ranked by cosine similarity."""
     query_text = build_query_text(q)
-    query_vec = encode_one(query_text)
+    if not query_text:
+        raise HTTPException(status_code=422, detail="Query must not be blank")
+    query_vec = await encode_one_async(query_text)
 
     async with get_db_session() as session:
         rows = await search_similar(session, query_vec, limit=limit)
