@@ -71,7 +71,7 @@ class PaperFactory(factory.Factory):
     publication_year = 2023
     citation_count = 10
     abstract = None
-    concepts = []
+    concepts: list[str] = []
     raw_metadata = None
 
 
