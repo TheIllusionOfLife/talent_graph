@@ -1,7 +1,10 @@
 // API client wrapping all backend calls
 
 import type {
+	AdminStats,
 	DiscoveryResponse,
+	EntityLinkOut,
+	EntityLinkPage,
 	PersonBrief,
 	PersonDetail,
 	RankMode,
@@ -113,5 +116,34 @@ export async function removeFromShortlist(
 ): Promise<void> {
 	await apiFetch<void>(`/shortlists/${shortlistId}/items/${personId}`, {
 		method: "DELETE",
+	});
+}
+
+export async function getAdminStats(): Promise<AdminStats> {
+	return apiFetch<AdminStats>("/admin/stats");
+}
+
+export async function listEntityLinks(
+	status = "pending",
+	page = 1,
+	pageSize = 20,
+): Promise<EntityLinkPage> {
+	const params = new URLSearchParams({
+		status,
+		page: String(page),
+		page_size: String(pageSize),
+	});
+	return apiFetch<EntityLinkPage>(`/admin/entity-links?${params}`);
+}
+
+export async function approveEntityLink(id: string): Promise<EntityLinkOut> {
+	return apiFetch<EntityLinkOut>(`/admin/entity-links/${id}/approve`, {
+		method: "POST",
+	});
+}
+
+export async function rejectEntityLink(id: string): Promise<EntityLinkOut> {
+	return apiFetch<EntityLinkOut>(`/admin/entity-links/${id}/reject`, {
+		method: "POST",
 	});
 }

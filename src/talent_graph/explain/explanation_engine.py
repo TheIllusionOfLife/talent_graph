@@ -30,8 +30,8 @@ class ExplanationEngine:
             model=settings.llm_model,
             timeout=settings.llm_timeout,
         )
-        self._semaphore = asyncio.Semaphore(1)
-        self._cache: dict[tuple, str] = {}
+        self._semaphore = asyncio.Semaphore(settings.llm_semaphore_size)
+        self._cache: dict[tuple, tuple[str, bool]] = {}
 
     def _cache_key(self, person: object, seed_text: str) -> tuple:
         settings = get_settings()
@@ -53,14 +53,14 @@ class ExplanationEngine:
             paper_ids_hash,
         )
 
-    async def explain(
+    async def explain_with_meta(
         self,
         person: object,
         seed_text: str,
         score_breakdown: dict[str, float],
         hop_distance: int = 1,
-    ) -> str:
-        """Generate a brief explanation for a candidate.
+    ) -> tuple[str, bool]:
+        """Generate an explanation and return (text, used_fallback).
 
         Returns cached result if available. Falls back to template if LLM unavailable.
         Never raises.
@@ -68,10 +68,9 @@ class ExplanationEngine:
         key = self._cache_key(person, seed_text)
         if key in self._cache:
             log.debug("explanation.cache_hit", person_id=person.id)
-            # Move to end to maintain LRU order
-            value = self._cache.pop(key)
-            self._cache[key] = value
-            return value
+            text, used_fallback = self._cache.pop(key)
+            self._cache[key] = (text, used_fallback)
+            return text, used_fallback
 
         # Evict oldest entry if cache is full
         if len(self._cache) >= _CACHE_MAXSIZE:
@@ -86,13 +85,26 @@ class ExplanationEngine:
             try:
                 text = await self._llm.complete(system_prompt, user_prompt)
                 log.debug("explanation.llm_success", person_id=person.id)
+                used_fallback = False
             except LLMUnavailableError as exc:
                 log.warning("explanation.fallback", person_id=person.id, reason=str(exc))
                 text = render_template_fallback(
                     person, score_breakdown, seed_text=seed_text, hop_distance=hop_distance
                 )
+                used_fallback = True
 
-        self._cache[key] = text
+        self._cache[key] = (text, used_fallback)
+        return text, used_fallback
+
+    async def explain(
+        self,
+        person: object,
+        seed_text: str,
+        score_breakdown: dict[str, float],
+        hop_distance: int = 1,
+    ) -> str:
+        """Generate a brief explanation. Returns text only (no fallback flag)."""
+        text, _ = await self.explain_with_meta(person, seed_text, score_breakdown, hop_distance)
         return text
 
 
@@ -115,3 +127,13 @@ async def explain(
 ) -> str:
     """Module-level convenience function. Uses the shared engine singleton."""
     return await _get_engine().explain(person, seed_text, score_breakdown, hop_distance)
+
+
+async def explain_with_meta(
+    person: object,
+    seed_text: str,
+    score_breakdown: dict[str, float],
+    hop_distance: int = 1,
+) -> tuple[str, bool]:
+    """Module-level wrapper returning (explanation_text, used_fallback)."""
+    return await _get_engine().explain_with_meta(person, seed_text, score_breakdown, hop_distance)

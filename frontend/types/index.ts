@@ -119,3 +119,27 @@ export interface ShortlistSummary {
 	created_at: string;
 	item_count: number;
 }
+
+export interface AdminStats {
+	person_count: number;
+	paper_count: number;
+	repo_count: number;
+	pending_entity_links: number;
+}
+
+export interface EntityLinkOut {
+	id: string;
+	person_id_a: string;
+	person_id_b: string;
+	confidence: number;
+	method: string;
+	status: string;
+	created_at: string;
+}
+
+export interface EntityLinkPage {
+	items: EntityLinkOut[];
+	total: number;
+	page: number;
+	page_size: number;
+}

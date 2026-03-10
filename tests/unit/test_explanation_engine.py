@@ -8,7 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from talent_graph.config.settings import get_settings
-from talent_graph.explain.explanation_engine import ExplanationEngine, explain
+from talent_graph.explain.explanation_engine import (
+    ExplanationEngine,
+    explain,
+    explain_with_meta,
+)
 from talent_graph.explain.llm_client import LLMUnavailableError
 from talent_graph.explain.prompt_templates import PROMPT_VERSION
 
@@ -40,6 +44,14 @@ def _make_score_breakdown() -> dict:
     }
 
 
+def _fresh_engine() -> ExplanationEngine:
+    """Create an ExplanationEngine bypassing __init__ with a fresh cache."""
+    engine = ExplanationEngine.__new__(ExplanationEngine)
+    engine._semaphore = asyncio.Semaphore(1)
+    engine._cache = {}
+    return engine
+
+
 class TestExplainFunction:
     """Module-level explain() function tests."""
 
@@ -59,14 +71,11 @@ class TestExplainFunction:
         person = _make_person()
         breakdown = _make_score_breakdown()
 
-        # Reset module singleton so we get a fresh engine with a mocked LLM
         import talent_graph.explain.explanation_engine as eng_module
 
         original_engine = eng_module._engine
         try:
-            engine = ExplanationEngine.__new__(ExplanationEngine)
-            engine._semaphore = asyncio.Semaphore(1)
-            engine._cache = {}
+            engine = _fresh_engine()
             mock_llm = AsyncMock()
             mock_llm.complete = AsyncMock(side_effect=LLMUnavailableError("offline"))
             engine._llm = mock_llm
@@ -82,15 +91,63 @@ class TestExplainFunction:
             eng_module._engine = original_engine
 
 
+class TestExplainWithMeta:
+    """Module-level explain_with_meta() tests."""
+
+    @pytest.mark.asyncio
+    async def test_returns_text_and_false_on_llm_success(self):
+        import talent_graph.explain.explanation_engine as eng_module
+
+        original_engine = eng_module._engine
+        try:
+            engine = _fresh_engine()
+            mock_llm = AsyncMock()
+            mock_llm.complete = AsyncMock(return_value="LLM explanation")
+            engine._llm = mock_llm
+            eng_module._engine = engine
+
+            person = _make_person()
+            breakdown = _make_score_breakdown()
+            with patch("talent_graph.explain.explanation_engine.build_brief_prompt") as mock_p:
+                mock_p.return_value = ("sys", "user")
+                text, used_fallback = await explain_with_meta(person, "query", breakdown)
+
+            assert text == "LLM explanation"
+            assert used_fallback is False
+        finally:
+            eng_module._engine = original_engine
+
+    @pytest.mark.asyncio
+    async def test_returns_text_and_true_on_llm_unavailable(self):
+        import talent_graph.explain.explanation_engine as eng_module
+
+        original_engine = eng_module._engine
+        try:
+            engine = _fresh_engine()
+            mock_llm = AsyncMock()
+            mock_llm.complete = AsyncMock(side_effect=LLMUnavailableError("offline"))
+            engine._llm = mock_llm
+            eng_module._engine = engine
+
+            person = _make_person()
+            breakdown = _make_score_breakdown()
+            with patch("talent_graph.explain.explanation_engine.build_brief_prompt") as mock_p:
+                mock_p.return_value = ("sys", "user")
+                text, used_fallback = await explain_with_meta(person, "query", breakdown)
+
+            assert isinstance(text, str)
+            assert len(text) > 0
+            assert used_fallback is True
+        finally:
+            eng_module._engine = original_engine
+
+
 class TestExplanationEngine:
     """ExplanationEngine class-level tests."""
 
     @pytest.mark.asyncio
     async def test_explain_calls_llm_client(self):
-        engine = ExplanationEngine.__new__(ExplanationEngine)
-        engine._semaphore = asyncio.Semaphore(1)
-        engine._cache = {}
-
+        engine = _fresh_engine()
         person = _make_person()
         breakdown = _make_score_breakdown()
 
@@ -109,18 +166,32 @@ class TestExplanationEngine:
             mock_instance.complete.assert_awaited_once_with("system content", "user content")
 
     @pytest.mark.asyncio
-    async def test_cache_hit_skips_llm(self):
-        engine = ExplanationEngine.__new__(ExplanationEngine)
-        engine._semaphore = asyncio.Semaphore(1)
+    async def test_explain_with_meta_returns_tuple(self):
+        engine = _fresh_engine()
+        person = _make_person()
+        breakdown = _make_score_breakdown()
 
+        mock_llm = AsyncMock()
+        mock_llm.complete = AsyncMock(return_value="meta explanation")
+        engine._llm = mock_llm
+
+        with patch("talent_graph.explain.explanation_engine.build_brief_prompt") as mock_prompt:
+            mock_prompt.return_value = ("sys", "user")
+            text, used_fallback = await engine.explain_with_meta(person, "query", breakdown)
+
+        assert text == "meta explanation"
+        assert used_fallback is False
+
+    @pytest.mark.asyncio
+    async def test_cache_hit_skips_llm(self):
+        engine = _fresh_engine()
         person = _make_person()
         breakdown = _make_score_breakdown()
         cached_text = "Cached explanation"
 
-        # Pre-populate cache with the key the engine would generate
         settings = get_settings()
         seed_hash = hashlib.sha256(b"attention mechanism").hexdigest()[:16]
-        paper_ids_hash = hashlib.sha256(b"").hexdigest()[:8]  # person.papers = []
+        paper_ids_hash = hashlib.sha256(b"").hexdigest()[:8]
         cache_key = (
             person.id,
             seed_hash,
@@ -129,7 +200,8 @@ class TestExplanationEngine:
             person.updated_at.isoformat(),
             paper_ids_hash,
         )
-        engine._cache = {cache_key: cached_text}
+        # Cache stores (text, used_fallback) tuples
+        engine._cache = {cache_key: (cached_text, False)}
 
         mock_llm = AsyncMock()
         mock_llm.complete = AsyncMock(return_value="NEW explanation")
@@ -140,12 +212,35 @@ class TestExplanationEngine:
         mock_llm.complete.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_cache_key_includes_updated_at(self):
-        """Two persons with same id but different updated_at should have different cache keys."""
-        engine = ExplanationEngine.__new__(ExplanationEngine)
-        engine._semaphore = asyncio.Semaphore(1)
-        engine._cache = {}
+    async def test_cache_hit_returns_correct_fallback_flag(self):
+        engine = _fresh_engine()
+        person = _make_person()
+        breakdown = _make_score_breakdown()
 
+        settings = get_settings()
+        seed_hash = hashlib.sha256(b"query").hexdigest()[:16]
+        paper_ids_hash = hashlib.sha256(b"").hexdigest()[:8]
+        cache_key = (
+            person.id,
+            seed_hash,
+            PROMPT_VERSION,
+            settings.llm_model,
+            person.updated_at.isoformat(),
+            paper_ids_hash,
+        )
+        engine._cache = {cache_key: ("fallback text", True)}
+
+        mock_llm = AsyncMock()
+        engine._llm = mock_llm
+
+        text, used_fallback = await engine.explain_with_meta(person, "query", breakdown)
+        assert text == "fallback text"
+        assert used_fallback is True
+        mock_llm.complete.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_cache_key_includes_updated_at(self):
+        engine = _fresh_engine()
         person_v1 = _make_person(updated_at=datetime(2025, 1, 1))
         person_v2 = _make_person(updated_at=datetime(2025, 6, 1))
         breakdown = _make_score_breakdown()
@@ -171,11 +266,7 @@ class TestExplanationEngine:
 
     @pytest.mark.asyncio
     async def test_semaphore_serializes_requests(self):
-        """Two concurrent explain() calls should not run the LLM in parallel."""
-        engine = ExplanationEngine.__new__(ExplanationEngine)
-        engine._semaphore = asyncio.Semaphore(1)
-        engine._cache = {}
-
+        engine = _fresh_engine()
         person = _make_person()
         breakdown = _make_score_breakdown()
 
@@ -186,7 +277,7 @@ class TestExplanationEngine:
             nonlocal concurrent_count, max_concurrent
             concurrent_count += 1
             max_concurrent = max(max_concurrent, concurrent_count)
-            await asyncio.sleep(0.01)  # simulate inference time
+            await asyncio.sleep(0.01)
             concurrent_count -= 1
             return "result"
 
@@ -196,22 +287,17 @@ class TestExplanationEngine:
 
         with patch("talent_graph.explain.explanation_engine.build_brief_prompt") as mock_prompt:
             mock_prompt.return_value = ("sys", "user")
-            # Run two calls concurrently with different cache keys by using different persons
             person2 = _make_person(person_id="p2", name="Bob")
             await asyncio.gather(
                 engine.explain(person, "nlp", breakdown),
                 engine.explain(person2, "nlp", breakdown),
             )
 
-        # With Semaphore(1), max_concurrent should never exceed 1
         assert max_concurrent <= 1
 
     @pytest.mark.asyncio
     async def test_llm_unavailable_returns_template_fallback(self):
-        engine = ExplanationEngine.__new__(ExplanationEngine)
-        engine._semaphore = asyncio.Semaphore(1)
-        engine._cache = {}
-
+        engine = _fresh_engine()
         person = _make_person()
         breakdown = _make_score_breakdown()
 
@@ -224,4 +310,21 @@ class TestExplanationEngine:
             result = await engine.explain(person, "nlp", breakdown)
 
         assert isinstance(result, str)
-        assert len(result) > 10  # template produces meaningful text
+        assert len(result) > 10
+
+    @pytest.mark.asyncio
+    async def test_llm_unavailable_sets_fallback_flag(self):
+        engine = _fresh_engine()
+        person = _make_person()
+        breakdown = _make_score_breakdown()
+
+        mock_llm = AsyncMock()
+        mock_llm.complete = AsyncMock(side_effect=LLMUnavailableError("offline"))
+        engine._llm = mock_llm
+
+        with patch("talent_graph.explain.explanation_engine.build_brief_prompt") as mock_prompt:
+            mock_prompt.return_value = ("sys", "user")
+            text, used_fallback = await engine.explain_with_meta(person, "nlp", breakdown)
+
+        assert used_fallback is True
+        assert len(text) > 10

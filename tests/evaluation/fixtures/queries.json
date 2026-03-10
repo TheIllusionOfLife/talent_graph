@@ -1,0 +1,52 @@
+[
+  {
+    "query": "multimodal dialogue systems",
+    "expected_person_ids": [],
+    "notes": "Seed: OpenAlex ingestion query. Populate expected_person_ids after first seed run."
+  },
+  {
+    "query": "graph neural networks knowledge representation",
+    "expected_person_ids": [],
+    "notes": "GNN + KG intersection. Hidden experts often miss keyword searches."
+  },
+  {
+    "query": "contrastive learning self-supervised vision",
+    "expected_person_ids": [],
+    "notes": "Emerging area — growth mode should surface recent contributors."
+  },
+  {
+    "query": "low-resource NLP multilingual transfer",
+    "expected_person_ids": [],
+    "notes": "Community with many hidden experts outside top institutions."
+  },
+  {
+    "query": "reinforcement learning from human feedback RLHF",
+    "expected_person_ids": [],
+    "notes": "Hot area — tests that established names don't crowd out hidden contributors."
+  },
+  {
+    "query": "federated learning privacy differential",
+    "expected_person_ids": [],
+    "notes": "Niche intersection; hidden expert detection is key."
+  },
+  {
+    "query": "protein structure prediction bioinformatics",
+    "expected_person_ids": [],
+    "notes": "Cross-disciplinary — tests concept-based discovery."
+  },
+  {
+    "query": "code generation large language models",
+    "expected_person_ids": [],
+    "notes": "GitHub+OpenAlex overlap expected; tests entity resolution quality."
+  },
+  {
+    "query": "efficient transformers sparse attention",
+    "expected_person_ids": [],
+    "notes": "Engineering-heavy; GitHub contributors may outrank paper authors."
+  },
+  {
+    "query": "causal inference machine learning",
+    "expected_person_ids": [],
+    "notes": "Smaller community; precision@5 should be high if embeddings are good."
+  }
+]

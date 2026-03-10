@@ -14,6 +14,7 @@ from talent_graph.api.routes.person import router as person_router
 from talent_graph.api.routes.search import router as search_router
 from talent_graph.api.routes.shortlist import router as shortlist_router
 from talent_graph.config.settings import get_settings
+from talent_graph.features.person_features import init_prestige_names
 from talent_graph.graph.neo4j_client import close_driver, run_write_query
 from talent_graph.graph.queries import CONSTRAINTS
 
@@ -67,6 +68,8 @@ def create_app() -> FastAPI:
             log.info("neo4j.constraints.ok")
         except Exception as exc:
             log.warning("neo4j.constraints.failed", error=str(exc))
+        await init_prestige_names()
+        log.info("prestige_orgs.loaded")
         yield
         await close_driver()
         log.info("app.shutdown")
