@@ -1,6 +1,192 @@
-# talent_graph
+# Talent Graph
 
-This project is called Talent Graph which utilizes graph data to find talents.
+A Talent Discovery platform that uses knowledge graphs, embeddings, and LLM-powered explanations to surface exceptional people who don't appear in traditional keyword or resume searches.
 
-Talent Graph is an application of Graph Discovery Engine which utilizes graph data to find anything, which we yet to develope. 
+## Architecture
 
+```text
+Data Sources (OpenAlex, GitHub)
+  → Ingestion/ETL (fetch, normalize, entity resolution)
+    → Storage (Postgres + pgvector, Neo4j, raw JSON)
+      → Intelligence (graph traversal, ranking, anomaly detection, LLM explanations)
+        → Application (FastAPI REST API, port 8000)
+          → UI (Next.js, port 3000)
+```
+
+## Prerequisites
+
+- Python 3.13 (`uv` manages the venv)
+- [Bun](https://bun.sh) (for the frontend — `make frontend` runs `bun run dev`; for npm/pnpm use `cd frontend && npm run dev` instead)
+- Docker + Docker Compose (for Postgres and Neo4j only)
+- MLX (optional, Apple Silicon only — for local LLM explanations)
+
+## Quick Start
+
+```bash
+# 1. Install dependencies
+make install
+
+# 2. Start databases
+make db
+
+# 3. Run migrations
+make migrate
+
+# 4. Start the API (in a separate terminal)
+make api
+
+# 5. Start the frontend (in a separate terminal)
+make frontend
+
+# 6. Ingest sample data
+make seed
+
+# 7. Open http://localhost:3000 → search "multimodal dialogue"
+```
+
+## Optional: LLM Explanations
+
+Start the MLX server (Apple Silicon only, ~18 GB VRAM):
+
+```bash
+make mlx-server
+```
+
+Without the MLX server, the API falls back to template-based explanations automatically.
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and adjust:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `API_KEY` | `change-me-in-production` | Authentication key for all API routes |
+| `DATABASE_URL` | `postgresql+asyncpg://...` | Async Postgres connection string |
+| `NEO4J_URI` | `bolt://localhost:7687` | Neo4j Bolt URL |
+| `NEO4J_USER` | `neo4j` | Neo4j username |
+| `NEO4J_PASSWORD` | `talent_graph` | Neo4j password |
+| `LLM_BASE_URL` | `http://localhost:8080/v1` | OpenAI-compatible LLM endpoint |
+| `LLM_MODEL` | `mlx-community/Qwen3.5-35B-A3B-4bit` | LLM model name |
+| `LLM_SEMAPHORE_SIZE` | `1` | Max concurrent LLM calls (raise after load testing) |
+| `APP_SECRET` | `change-me-in-production` | Secret key for HMAC-SHA256 hashing of API keys in shortlists |
+| `GITHUB_TOKEN` | `` | GitHub PAT for ingestion (5 000 req/hr) |
+| `OPENALEX_EMAIL` | `` | Polite pool email for OpenAlex |
+
+## API Reference
+
+All endpoints require `X-API-Key: <your-key>` header.
+
+### Search
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/search?q=<query>&limit=20` | Vector-similarity person search |
+
+### Discovery
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/discovery/{paper\|person\|concept}/{id}` | Graph-based candidate ranking |
+
+Query params: `mode` (`standard`/`hidden`/`emerging`), `limit`, `explain` (bool).
+
+### Person
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/person/{id}` | Full person detail (papers, repos, org) |
+| `POST` | `/person/{id}/brief` | LLM explanation brief (body: `{seed_text}`) |
+
+### Shortlists
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/shortlists` | List caller's shortlists |
+| `POST` | `/shortlists` | Create shortlist |
+| `GET` | `/shortlists/{id}` | Get shortlist with items |
+| `DELETE` | `/shortlists/{id}` | Delete shortlist |
+| `POST` | `/shortlists/{id}/items` | Add person to shortlist |
+| `DELETE` | `/shortlists/{id}/items/{person_id}` | Remove person from shortlist |
+
+### Admin
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/admin/stats` | System counts (persons, papers, repos, pending links) |
+| `POST` | `/admin/ingest/openalex` | Queue OpenAlex ingestion |
+| `POST` | `/admin/ingest/github` | Queue GitHub ingestion |
+| `GET` | `/admin/entity-links?status=pending` | List entity resolution candidates |
+| `POST` | `/admin/entity-links/{id}/approve` | Approve an entity link |
+| `POST` | `/admin/entity-links/{id}/reject` | Reject an entity link |
+
+## Make Targets
+
+```text
+make db            Start Postgres + Neo4j (Docker)
+make db-stop       Stop databases
+make db-reset      Wipe and restart databases
+make migrate       Run Alembic migrations (upgrade head)
+make seed          Ingest sample data (OpenAlex + GitHub)
+make refresh       Re-run ingestion to pick up new data
+make eval          Run offline evaluation (precision@k, MRR)
+make api           Start FastAPI dev server (port 8000)
+make frontend      Start Next.js dev server (port 3000)
+make mlx-server    Start MLX LLM server (port 8080)
+make test          Run all tests
+make lint          Run ruff linter
+make format        Format code with ruff
+```
+
+## Evaluation
+
+After seeding data, annotate `tests/evaluation/fixtures/queries.json` with known `expected_person_ids`, then run:
+
+```bash
+make eval
+# or
+uv run python -m talent_graph.scripts.evaluate --api-url http://localhost:8000
+```
+
+Outputs a table with `precision@5`, `precision@10`, and `MRR` per query.
+
+## Database Migrations
+
+```bash
+# Apply all pending migrations
+make migrate
+
+# Create a new migration (autogenerated from model changes)
+make migrate-new
+
+# Roll back one migration
+make migrate-down
+```
+
+## Ranking Modes
+
+| Mode | Emphasis |
+|------|----------|
+| `standard` | Balanced (semantic + graph + credibility) |
+| `hidden` | Hidden experts — high novelty + anomaly score |
+| `emerging` | Fast-rising researchers — high growth + recency |
+
+## Graph Schema (Neo4j)
+
+Nodes: `Person`, `Paper`, `Repo`, `Concept`, `Org`
+
+Key relationships:
+- `(Person)-[:AUTHORED]->(Paper)`
+- `(Person)-[:CONTRIBUTED_TO]->(Repo)`
+- `(Person)-[:AFFILIATED_WITH]->(Org)`
+- `(Paper|Repo)-[:ABOUT]->(Concept)`
+- `(Person)-[:COAUTHORED_WITH]->(Person)`
+
+## Sprint History
+
+| Sprint | Focus | Status |
+|--------|-------|--------|
+| 1 | Foundation — scaffold, OpenAlex, FastAPI, Postgres + Neo4j | ✅ |
+| 2 | GitHub + Entity Resolution | ✅ |
+| 3 | Embeddings + Ranking + Basic UI | ✅ |
+| 4 | Hidden Expert + LLM Explanations + Shortlists | ✅ |
+| 5 | Evaluation + Polish (per-user auth, prestige table, admin UI) | ✅ |

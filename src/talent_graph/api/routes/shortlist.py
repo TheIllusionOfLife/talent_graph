@@ -2,21 +2,35 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 from datetime import UTC, datetime
 
+import asyncpg
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 
-from talent_graph.api.deps import require_api_key
+from talent_graph.api.deps import get_current_key
+from talent_graph.config.settings import get_settings
 from talent_graph.storage.id_gen import new_id
 from talent_graph.storage.models import Person, Shortlist, ShortlistItem
 from talent_graph.storage.postgres import get_db_session
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/shortlists", tags=["shortlists"])
+
+
+def _owner_hash(api_key: str) -> str:
+    """Return an HMAC-SHA256 digest of the API key using the configured app secret.
+
+    Never stores the raw key — only this digest is persisted and compared.
+    """
+    secret = get_settings().app_secret.encode()
+    return hmac.new(secret, api_key.encode(), hashlib.sha256).hexdigest()
 
 
 # ── Request / Response models ────────────────────────────────────────────────
@@ -51,7 +65,6 @@ class ShortlistOut(BaseModel):
     id: str
     name: str
     description: str | None = None
-    owner_key: str
     created_at: datetime
     updated_at: datetime
     items: list[ShortlistItemOut] = []
@@ -68,11 +81,12 @@ class ShortlistSummary(BaseModel):
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 
-@router.post(
-    "", status_code=201, response_model=ShortlistOut, dependencies=[Depends(require_api_key)]
-)
-async def create_shortlist(body: ShortlistCreate) -> ShortlistOut:
-    """Create a new shortlist."""
+@router.post("", status_code=201, response_model=ShortlistOut)
+async def create_shortlist(
+    body: ShortlistCreate,
+    current_key: str = Depends(get_current_key),
+) -> ShortlistOut:
+    """Create a new shortlist owned by the caller's API key."""
     shortlist_id = f"sl_{new_id()}"
     now = datetime.now(UTC).replace(tzinfo=None)
     async with get_db_session() as session:
@@ -80,7 +94,7 @@ async def create_shortlist(body: ShortlistCreate) -> ShortlistOut:
             id=shortlist_id,
             name=body.name,
             description=body.description,
-            owner_key="default",
+            owner_key=_owner_hash(current_key),
             created_at=now,
             updated_at=now,
         )
@@ -89,13 +103,16 @@ async def create_shortlist(body: ShortlistCreate) -> ShortlistOut:
         return _shortlist_to_out(sl)
 
 
-@router.get("", response_model=list[ShortlistSummary], dependencies=[Depends(require_api_key)])
-async def list_shortlists() -> list[ShortlistSummary]:
-    """List all shortlists with item counts (single aggregated query)."""
+@router.get("", response_model=list[ShortlistSummary])
+async def list_shortlists(
+    current_key: str = Depends(get_current_key),
+) -> list[ShortlistSummary]:
+    """List shortlists owned by the caller (with item counts)."""
     async with get_db_session() as session:
         result = await session.execute(
             select(Shortlist, func.count(ShortlistItem.person_id).label("item_count"))
             .outerjoin(ShortlistItem, ShortlistItem.shortlist_id == Shortlist.id)
+            .where(Shortlist.owner_key == _owner_hash(current_key))
             .group_by(Shortlist.id)
             .order_by(Shortlist.created_at.desc())
         )
@@ -113,16 +130,17 @@ async def list_shortlists() -> list[ShortlistSummary]:
     ]
 
 
-@router.get("/{shortlist_id}", response_model=ShortlistOut, dependencies=[Depends(require_api_key)])
-async def get_shortlist(shortlist_id: str) -> ShortlistOut:
-    """Get shortlist detail with items and person summaries."""
+@router.get("/{shortlist_id}", response_model=ShortlistOut)
+async def get_shortlist(
+    shortlist_id: str,
+    current_key: str = Depends(get_current_key),
+) -> ShortlistOut:
+    """Get shortlist detail (must belong to caller)."""
     async with get_db_session() as session:
-        from sqlalchemy.orm import selectinload
-
         result = await session.execute(
             select(Shortlist)
             .options(selectinload(Shortlist.items).selectinload(ShortlistItem.person))
-            .where(Shortlist.id == shortlist_id)
+            .where(Shortlist.id == shortlist_id, Shortlist.owner_key == _owner_hash(current_key))
         )
         sl = result.scalar_one_or_none()
 
@@ -132,11 +150,19 @@ async def get_shortlist(shortlist_id: str) -> ShortlistOut:
     return _shortlist_to_out(sl)
 
 
-@router.delete("/{shortlist_id}", status_code=204, dependencies=[Depends(require_api_key)])
-async def delete_shortlist(shortlist_id: str) -> None:
-    """Delete shortlist (cascades to items)."""
+@router.delete("/{shortlist_id}", status_code=204)
+async def delete_shortlist(
+    shortlist_id: str,
+    current_key: str = Depends(get_current_key),
+) -> None:
+    """Delete shortlist owned by the caller (cascades to items)."""
     async with get_db_session() as session:
-        sl = await session.get(Shortlist, shortlist_id)
+        result = await session.execute(
+            select(Shortlist).where(
+                Shortlist.id == shortlist_id, Shortlist.owner_key == _owner_hash(current_key)
+            )
+        )
+        sl = result.scalar_one_or_none()
         if sl is None:
             raise HTTPException(status_code=404, detail="Shortlist not found")
         await session.delete(sl)
@@ -146,12 +172,20 @@ async def delete_shortlist(shortlist_id: str) -> None:
     "/{shortlist_id}/items",
     status_code=201,
     response_model=ShortlistItemOut,
-    dependencies=[Depends(require_api_key)],
 )
-async def add_item(shortlist_id: str, body: ShortlistItemCreate) -> ShortlistItemOut:
-    """Add a person to a shortlist."""
+async def add_item(
+    shortlist_id: str,
+    body: ShortlistItemCreate,
+    current_key: str = Depends(get_current_key),
+) -> ShortlistItemOut:
+    """Add a person to a shortlist owned by the caller."""
     async with get_db_session() as session:
-        sl = await session.get(Shortlist, shortlist_id)
+        result = await session.execute(
+            select(Shortlist).where(
+                Shortlist.id == shortlist_id, Shortlist.owner_key == _owner_hash(current_key)
+            )
+        )
+        sl = result.scalar_one_or_none()
         if sl is None:
             raise HTTPException(status_code=404, detail="Shortlist not found")
 
@@ -171,7 +205,11 @@ async def add_item(shortlist_id: str, body: ShortlistItemCreate) -> ShortlistIte
         try:
             await session.flush()
         except IntegrityError as exc:
-            raise HTTPException(status_code=409, detail="Person already in shortlist") from exc
+            # Unwrap to check for unique violation specifically
+            orig = getattr(exc, "orig", None)
+            if isinstance(orig, asyncpg.exceptions.UniqueViolationError):
+                raise HTTPException(status_code=409, detail="Person already in shortlist") from exc
+            raise
 
         return ShortlistItemOut(
             person_id=item.person_id,
@@ -187,25 +225,30 @@ async def add_item(shortlist_id: str, body: ShortlistItemCreate) -> ShortlistIte
         )
 
 
-@router.delete(
-    "/{shortlist_id}/items/{person_id}",
-    status_code=204,
-    dependencies=[Depends(require_api_key)],
-)
-async def remove_item(shortlist_id: str, person_id: str) -> None:
-    """Remove a person from a shortlist."""
+@router.delete("/{shortlist_id}/items/{person_id}", status_code=204)
+async def remove_item(
+    shortlist_id: str,
+    person_id: str,
+    current_key: str = Depends(get_current_key),
+) -> None:
+    """Remove a person from a shortlist owned by the caller."""
     async with get_db_session() as session:
-        sl = await session.get(Shortlist, shortlist_id)
+        result = await session.execute(
+            select(Shortlist).where(
+                Shortlist.id == shortlist_id, Shortlist.owner_key == _owner_hash(current_key)
+            )
+        )
+        sl = result.scalar_one_or_none()
         if sl is None:
             raise HTTPException(status_code=404, detail="Shortlist not found")
 
-        result = await session.execute(
+        item_result = await session.execute(
             select(ShortlistItem).where(
                 ShortlistItem.shortlist_id == shortlist_id,
                 ShortlistItem.person_id == person_id,
             )
         )
-        item = result.scalar_one_or_none()
+        item = item_result.scalar_one_or_none()
         if item is None:
             raise HTTPException(status_code=404, detail="Item not found in shortlist")
         await session.delete(item)
@@ -239,7 +282,6 @@ def _shortlist_to_out(sl: Shortlist) -> ShortlistOut:
         id=sl.id,
         name=sl.name,
         description=sl.description,
-        owner_key=sl.owner_key,
         created_at=sl.created_at,
         updated_at=sl.updated_at,
         items=items,

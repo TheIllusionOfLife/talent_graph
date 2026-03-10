@@ -179,6 +179,15 @@ class Shortlist(Base):
     )
 
 
+class PrestigeOrg(Base):
+    """Configurable prestige organisation list for credibility scoring."""
+
+    __tablename__ = "prestige_orgs"
+
+    name: Mapped[str] = mapped_column(Text, primary_key=True)  # stored lowercase
+    tier: Mapped[int] = mapped_column(Integer, nullable=False)  # 1 = top, 2 = high, …
+
+
 class ShortlistItem(Base):
     """A person pinned to a shortlist with optional note and ordering."""
 

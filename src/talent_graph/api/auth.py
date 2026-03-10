@@ -20,3 +20,10 @@ async def require_api_key(api_key: str | None = Security(_api_key_header)) -> st
             headers={"WWW-Authenticate": "ApiKey"},
         )
     return api_key
+
+
+async def require_api_key_returning(
+    api_key: str | None = Security(_api_key_header),
+) -> str:
+    """Dependency: validates X-API-Key and returns the key string for use in handler body."""
+    return await require_api_key(api_key)

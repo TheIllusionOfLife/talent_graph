@@ -1,30 +1,74 @@
 """Feature engineering for person ranking signals."""
 
+from __future__ import annotations
+
 import math
+import re
 from dataclasses import dataclass
 
-# Elite institutions used as credibility anchors (case-insensitive prefix match)
-_ELITE_ORGS = {
-    "mit",
-    "stanford",
-    "harvard",
-    "caltech",
-    "oxford",
-    "cambridge",
-    "berkeley",
-    "princeton",
-    "carnegie mellon",
-    "cmu",
-    "eth zurich",
-    "epfl",
-    "toronto",
-    "deepmind",
-    "google research",
-    "microsoft research",
-    "meta ai",
-    "openai",
-    "anthropic",
-}
+import structlog
+
+log = structlog.get_logger()
+
+# Fallback set used before DB prestige table is loaded (tests / early startup)
+_ELITE_ORGS_FALLBACK: frozenset[str] = frozenset(
+    {
+        "mit",
+        "stanford",
+        "harvard",
+        "caltech",
+        "oxford",
+        "cambridge",
+        "berkeley",
+        "princeton",
+        "carnegie mellon",
+        "cmu",
+        "eth zurich",
+        "epfl",
+        "toronto",
+        "deepmind",
+        "google research",
+        "microsoft research",
+        "meta ai",
+        "openai",
+        "anthropic",
+    }
+)
+
+# Module-level cache — populated once at startup via init_prestige_names().
+# None means "not yet loaded"; compute_credibility falls back to _ELITE_ORGS_FALLBACK.
+_prestige_names: frozenset[str] | None = None
+
+
+async def init_prestige_names() -> bool:
+    """Load prestige_orgs table into module-level frozenset (called once at startup).
+
+    Returns True if loaded from DB, False if fallback is used.
+    """
+    global _prestige_names
+    try:
+        from sqlalchemy import select
+
+        from talent_graph.storage.models import PrestigeOrg
+        from talent_graph.storage.postgres import get_db_session
+
+        async with get_db_session() as session:
+            result = await session.execute(select(PrestigeOrg.name))
+            rows = result.scalars().all()
+        _prestige_names = frozenset(name.lower().strip() for name in rows if name and name.strip())
+        return True
+    except Exception as exc:
+        log.warning(
+            "prestige_orgs.load_failed",
+            detail="using hardcoded fallback",
+            error=str(exc),
+            exc_info=True,
+        )
+        return False
+
+
+def _prestige_set() -> frozenset[str]:
+    return _prestige_names if _prestige_names is not None else _ELITE_ORGS_FALLBACK
 
 
 @dataclass
@@ -91,14 +135,16 @@ def compute_evidence_quality(source_count: int) -> float:
 
 
 def compute_credibility(org_name: str | None) -> float:
-    """Organisation prestige proxy.
+    """Organisation prestige proxy using DB-backed prestige_orgs table.
 
-    Known elite orgs → 0.9, no org → 0.3, others → 0.5.
+    Known prestige orgs → 0.9, no org → 0.3, others → 0.5.
+    Matching is case-insensitive substring check against the preloaded frozenset.
     """
-    if org_name is None:
+    if not org_name or not org_name.strip():
         return 0.3
-    lower = org_name.lower()
-    for elite in _ELITE_ORGS:
-        if elite in lower:
+    lower = org_name.lower().strip()
+    prestige = _prestige_set()
+    for name in prestige:
+        if re.search(rf"\b{re.escape(name)}\b", lower):
             return 0.9
     return 0.5

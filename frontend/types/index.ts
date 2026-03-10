@@ -106,7 +106,6 @@ export interface ShortlistOut {
 	id: string;
 	name: string;
 	description: string | null;
-	owner_key: string;
 	created_at: string;
 	updated_at: string;
 	items: ShortlistItemOut[];
@@ -118,4 +117,30 @@ export interface ShortlistSummary {
 	description: string | null;
 	created_at: string;
 	item_count: number;
+}
+
+export interface AdminStats {
+	person_count: number;
+	paper_count: number;
+	repo_count: number;
+	pending_entity_links: number;
+}
+
+export type EntityLinkStatus = "pending" | "merged" | "rejected";
+
+export interface EntityLinkOut {
+	id: string;
+	person_id_a: string;
+	person_id_b: string;
+	confidence: number;
+	method: string;
+	status: EntityLinkStatus;
+	created_at: string;
+}
+
+export interface EntityLinkPage {
+	items: EntityLinkOut[];
+	total: number;
+	page: number;
+	page_size: number;
 }

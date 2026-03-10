@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from talent_graph.api.deps import require_api_key
-from talent_graph.explain.explanation_engine import explain
+from talent_graph.explain.explanation_engine import explain_with_meta
 from talent_graph.storage.models import Person, Repo, RepoContributor
 from talent_graph.storage.postgres import get_db_session
 
@@ -169,12 +169,7 @@ async def get_person_brief(person_id: str, body: BriefRequest) -> PersonBrief:
         "credibility": 0.9 if person.org else 0.3,
     }
 
-    # Detect whether fallback was used by comparing with template output
-    from talent_graph.explain.prompt_templates import render_template_fallback
-
-    template_text = render_template_fallback(person, score_breakdown, seed_text=body.seed_text)
-    explanation = await explain(person, body.seed_text, score_breakdown)
-    used_fallback = explanation == template_text
+    explanation, used_fallback = await explain_with_meta(person, body.seed_text, score_breakdown)
 
     # Build evidence list from papers and org
     evidence: list[EvidenceItem] = []

@@ -1,4 +1,4 @@
-.PHONY: db db-stop db-reset migrate migrate-new migrate-down seed seed-github refresh api frontend mlx-server test test-unit test-integration lint format typecheck install help
+.PHONY: db db-stop db-down db-reset migrate migrate-new migrate-down seed seed-github refresh eval api frontend mlx-server test test-unit test-integration lint format typecheck install help
 
 # ─── Infrastructure ───────────────────────────────────────────────────────────
 
@@ -10,6 +10,8 @@ db:
 
 db-stop:
 	docker compose down
+
+db-down: db-stop
 
 db-reset:
 	docker compose down -v
@@ -41,13 +43,16 @@ mlx-server:
 # ─── Data ─────────────────────────────────────────────────────────────────────
 
 seed:
-	uv run python -m talent_graph.scripts.seed_ingest --source openalex --query "multimodal dialogue"
+	uv run python -m talent_graph.scripts.seed_ingest --source all --query "multimodal dialogue"
 
 seed-github:
-	uv run python -m talent_graph.scripts.seed_ingest --source github --topic "multimodal-learning"
+	uv run python -m talent_graph.scripts.seed_ingest --source github
 
 refresh:
-	uv run python -m talent_graph.scripts.refresh
+	uv run python -m talent_graph.scripts.seed_ingest --source all --query "multimodal dialogue"
+
+eval:
+	uv run python -m talent_graph.scripts.evaluate --api-key "$${API_KEY:-change-me-in-production}"
 
 # ─── Quality ──────────────────────────────────────────────────────────────────
 
@@ -64,8 +69,8 @@ lint:
 	uv run ruff check src/ tests/
 
 format:
-	uv run ruff format src/ tests/
-	uv run ruff check --fix src/ tests/
+	uv run ruff format src/ tests/ alembic/
+	uv run ruff check --fix src/ tests/ alembic/
 
 typecheck:
 	uv run mypy src/
@@ -78,10 +83,12 @@ install:
 help:
 	@echo "Available targets:"
 	@echo "  make db            - Start Postgres + Neo4j via Docker Compose"
-	@echo "  make db-stop       - Stop databases"
+	@echo "  make db-stop       - Stop databases (alias: db-down)"
 	@echo "  make db-reset      - Reset databases (destructive)"
 	@echo "  make migrate       - Run Alembic migrations"
-	@echo "  make seed          - Ingest sample OpenAlex data"
+	@echo "  make seed          - Ingest sample data (OpenAlex + GitHub)"
+	@echo "  make refresh       - Re-run ingestion to pick up new data"
+	@echo "  make eval          - Run offline evaluation (precision@k, MRR)"
 	@echo "  make api           - Start FastAPI dev server (port 8000)"
 	@echo "  make frontend      - Start Next.js dev server (port 3000)"
 	@echo "  make mlx-server    - Start MLX LLM server (port 8080)"
