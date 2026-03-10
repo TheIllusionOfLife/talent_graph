@@ -40,12 +40,13 @@ async def db_engine(postgres_url):
 
 @pytest_asyncio.fixture
 async def db_session_factory(db_engine):
-    """Per-test: truncate all tables, override session factory, yield."""
+    """Per-test: truncate all tables in a single statement, override session factory."""
+    # Single TRUNCATE ... CASCADE is atomic and avoids asyncpg pipelining issues
+    # caused by issuing many sequential TRUNCATE statements on the same connection.
+    async with db_engine.begin() as conn:
+        table_names = ", ".join(t.name for t in reversed(Base.metadata.sorted_tables))
+        await conn.execute(text(f"TRUNCATE TABLE {table_names} RESTART IDENTITY CASCADE"))
     factory = async_sessionmaker(db_engine, expire_on_commit=False)
-    async with factory() as session:
-        for table in reversed(Base.metadata.sorted_tables):
-            await session.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
-        await session.commit()
     original = postgres_module._session_factory
     postgres_module._session_factory = factory
     yield factory
