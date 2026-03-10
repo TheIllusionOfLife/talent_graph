@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 from datetime import UTC, datetime
 
 import asyncpg
@@ -11,8 +12,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 
 from talent_graph.api.deps import get_current_key
+from talent_graph.config.settings import get_settings
 from talent_graph.storage.id_gen import new_id
 from talent_graph.storage.models import Person, Shortlist, ShortlistItem
 from talent_graph.storage.postgres import get_db_session
@@ -22,8 +25,12 @@ router = APIRouter(prefix="/shortlists", tags=["shortlists"])
 
 
 def _owner_hash(api_key: str) -> str:
-    """Return a one-way hash of the API key for safe storage and lookup."""
-    return hashlib.sha256(api_key.encode()).hexdigest()
+    """Return an HMAC-SHA256 digest of the API key using the configured app secret.
+
+    Never stores the raw key — only this digest is persisted and compared.
+    """
+    secret = get_settings().app_secret.encode()
+    return hmac.new(secret, api_key.encode(), hashlib.sha256).hexdigest()
 
 
 # ── Request / Response models ────────────────────────────────────────────────
@@ -130,8 +137,6 @@ async def get_shortlist(
 ) -> ShortlistOut:
     """Get shortlist detail (must belong to caller)."""
     async with get_db_session() as session:
-        from sqlalchemy.orm import selectinload
-
         result = await session.execute(
             select(Shortlist)
             .options(selectinload(Shortlist.items).selectinload(ShortlistItem.person))

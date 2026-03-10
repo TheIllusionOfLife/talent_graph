@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { approveEntityLink, listEntityLinks, rejectEntityLink } from "@/lib/api";
 import type { EntityLinkOut, EntityLinkPage } from "@/types";
@@ -11,23 +11,33 @@ export default function EntityReviewPage() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [processing, setProcessing] = useState<string | null>(null);
+	const controllerRef = useRef<AbortController | null>(null);
 
 	const load = useCallback((p: number) => {
+		// Abort any in-flight request to avoid stale results from earlier responses
+		controllerRef.current?.abort();
+		const controller = new AbortController();
+		controllerRef.current = controller;
+
 		setLoading(true);
 		setError(null);
-		listEntityLinks("pending", p)
+		listEntityLinks("pending", p, 20, controller.signal)
 			.then((data) => {
 				setPage(data);
 				setCurrentPage(p);
 			})
-			.catch((e: unknown) =>
-				setError(e instanceof Error ? e.message : "Failed to load entity links"),
-			)
+			.catch((e: unknown) => {
+				if (e instanceof Error && e.name === "AbortError") return;
+				setError(e instanceof Error ? e.message : "Failed to load entity links");
+			})
 			.finally(() => setLoading(false));
 	}, []);
 
 	useEffect(() => {
 		load(1);
+		return () => {
+			controllerRef.current?.abort();
+		};
 	}, [load]);
 
 	async function handleAction(
@@ -66,9 +76,16 @@ export default function EntityReviewPage() {
 			</div>
 
 			{error && (
-				<p className="text-red-600 bg-red-50 border border-red-200 rounded p-3 mb-4">
-					{error}
-				</p>
+				<div className="flex items-center justify-between bg-red-50 border border-red-200 rounded p-3 mb-4">
+					<p className="text-red-600">{error}</p>
+					<button
+						type="button"
+						onClick={() => { setError(null); load(currentPage); }}
+						className="ml-4 text-sm text-red-700 underline hover:no-underline shrink-0"
+					>
+						Retry
+					</button>
+				</div>
 			)}
 
 			{loading && <p className="text-gray-500">Loading…</p>}
@@ -153,6 +170,8 @@ function EntityLinkRow({
 				<button
 					type="button"
 					disabled={busy}
+					aria-busy={busy}
+					aria-label={busy ? "Approving…" : "Approve"}
 					onClick={() => onAction(link, "approve")}
 					className="px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50"
 				>
@@ -161,6 +180,8 @@ function EntityLinkRow({
 				<button
 					type="button"
 					disabled={busy}
+					aria-busy={busy}
+					aria-label={busy ? "Rejecting…" : "Reject"}
 					onClick={() => onAction(link, "reject")}
 					className="px-3 py-1.5 bg-red-100 text-red-700 border border-red-300 text-sm rounded hover:bg-red-200 disabled:opacity-50"
 				>

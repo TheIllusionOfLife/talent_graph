@@ -52,7 +52,7 @@ refresh:
 	uv run python -m talent_graph.scripts.seed_ingest --source all --query "multimodal dialogue"
 
 eval:
-	uv run python -m talent_graph.scripts.evaluate
+	uv run python -m talent_graph.scripts.evaluate --api-key "$${API_KEY:-change-me-in-production}"
 
 # ─── Quality ──────────────────────────────────────────────────────────────────
 

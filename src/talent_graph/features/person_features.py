@@ -57,8 +57,13 @@ async def init_prestige_names() -> bool:
             rows = result.scalars().all()
         _prestige_names = frozenset(rows)
         return True
-    except Exception:
-        log.warning("prestige_orgs.load_failed", detail="using hardcoded fallback")
+    except Exception as exc:
+        log.warning(
+            "prestige_orgs.load_failed",
+            detail="using hardcoded fallback",
+            error=str(exc),
+            exc_info=True,
+        )
         return False
 
 

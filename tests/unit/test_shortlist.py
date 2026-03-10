@@ -1,5 +1,7 @@
 """TDD tests for shortlist CRUD API routes."""
 
+import hashlib
+import hmac
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -7,6 +9,13 @@ import asyncpg.exceptions
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
+
+# Default test secret matches get_settings().app_secret in the test environment
+_TEST_SECRET = "change-me-in-production"
+
+
+def _owner_hash_test(api_key: str) -> str:
+    return hmac.new(_TEST_SECRET.encode(), api_key.encode(), hashlib.sha256).hexdigest()
 
 
 def _make_shortlist(
@@ -19,7 +28,8 @@ def _make_shortlist(
     sl.id = shortlist_id
     sl.name = name
     sl.description = description
-    sl.owner_key = owner_key
+    # Store the HMAC hash as production code does, not the raw key
+    sl.owner_key = _owner_hash_test(owner_key)
     sl.created_at = datetime(2025, 1, 1)
     sl.updated_at = datetime(2025, 1, 1)
     sl.items = []
@@ -59,9 +69,7 @@ class TestShortlistCRUD:
         assert "owner_key" not in data
 
     def test_create_shortlist_sets_owner_key_from_header(self):
-        """owner_key must come from the API key (stored as hash), never hardcoded."""
-        import hashlib
-
+        """owner_key must be HMAC of the API key, never raw or 'default'."""
         client = self._get_client()
         with patch("talent_graph.api.routes.shortlist.get_db_session") as mock_ctx:
             mock_session = AsyncMock()
@@ -71,10 +79,9 @@ class TestShortlistCRUD:
             response = client.post("/shortlists", json={"name": "Test"})
         assert response.status_code == 201
         # Verify that the session.add was called with a Shortlist whose owner_key
-        # is the hash of "test-key" (not the raw key, not "default")
+        # is the HMAC-SHA256 of "test-key" (not the raw key, not "default")
         added = mock_session.add.call_args[0][0]
-        expected_hash = hashlib.sha256(b"test-key").hexdigest()
-        assert added.owner_key == expected_hash
+        assert added.owner_key == _owner_hash_test("test-key")
 
     def test_create_shortlist_requires_auth(self):
         from talent_graph.api.main import create_app

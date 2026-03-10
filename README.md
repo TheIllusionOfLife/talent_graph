@@ -16,7 +16,7 @@ Data Sources (OpenAlex, GitHub)
 ## Prerequisites
 
 - Python 3.13 (`uv` manages the venv)
-- Node.js / Bun (for the frontend)
+- [Bun](https://bun.sh) (for the frontend — `make frontend` runs `bun run dev`; for npm/pnpm use `cd frontend && npm run dev` instead)
 - Docker + Docker Compose (for Postgres and Neo4j only)
 - MLX (optional, Apple Silicon only — for local LLM explanations)
 

@@ -127,13 +127,14 @@ export async function listEntityLinks(
 	status = "pending",
 	page = 1,
 	pageSize = 20,
+	signal?: AbortSignal,
 ): Promise<EntityLinkPage> {
 	const params = new URLSearchParams({
 		status,
 		page: String(page),
 		page_size: String(pageSize),
 	});
-	return apiFetch<EntityLinkPage>(`/admin/entity-links?${params}`);
+	return apiFetch<EntityLinkPage>(`/admin/entity-links?${params}`, { signal });
 }
 
 export async function approveEntityLink(id: string): Promise<EntityLinkOut> {
