@@ -97,7 +97,7 @@ jobs:
       - name: Install bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.2.23" # pin to tested version; bump when upgrading
 
       - name: Install dependencies
         run: bun install --frozen-lockfile

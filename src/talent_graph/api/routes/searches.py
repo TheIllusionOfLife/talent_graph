@@ -31,6 +31,17 @@ class SavedSearchOut(BaseModel):
     last_run_at: datetime | None = None
 
 
+def _to_out(search: SavedSearch) -> SavedSearchOut:
+    return SavedSearchOut(
+        id=search.id,
+        name=search.name,
+        query=search.query,
+        filters=search.filters,
+        created_at=search.created_at,
+        last_run_at=search.last_run_at,
+    )
+
+
 @router.post("", status_code=201, response_model=SavedSearchOut)
 async def create_saved_search(
     body: SavedSearchCreate,
@@ -49,14 +60,7 @@ async def create_saved_search(
         )
         session.add(search)
         await session.flush()
-        return SavedSearchOut(
-            id=search.id,
-            name=search.name,
-            query=search.query,
-            filters=search.filters,
-            created_at=search.created_at,
-            last_run_at=search.last_run_at,
-        )
+        return _to_out(search)
 
 
 @router.get("", response_model=list[SavedSearchOut])
@@ -70,17 +74,7 @@ async def list_saved_searches(
             .order_by(SavedSearch.created_at.desc())
         )
         searches = result.scalars().all()
-    return [
-        SavedSearchOut(
-            id=s.id,
-            name=s.name,
-            query=s.query,
-            filters=s.filters,
-            created_at=s.created_at,
-            last_run_at=s.last_run_at,
-        )
-        for s in searches
-    ]
+    return [_to_out(s) for s in searches]
 
 
 @router.get("/{search_id}", response_model=SavedSearchOut)
@@ -98,14 +92,7 @@ async def get_saved_search(
         search = result.scalar_one_or_none()
     if search is None:
         raise HTTPException(status_code=404, detail="Saved search not found")
-    return SavedSearchOut(
-        id=search.id,
-        name=search.name,
-        query=search.query,
-        filters=search.filters,
-        created_at=search.created_at,
-        last_run_at=search.last_run_at,
-    )
+    return _to_out(search)
 
 
 @router.delete("/{search_id}", status_code=204)

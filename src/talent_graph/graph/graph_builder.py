@@ -53,7 +53,7 @@ class GraphBuilder:
             )
 
         # 3. Resolve authors that have a canonical ID
-        resolved = [ap for ap in paper.authors if ap.person.canonical_person_id is not None]
+        resolved = [ap for ap in paper.authors if ap.person.canonical_person_id]
         if not resolved:
             return
 
