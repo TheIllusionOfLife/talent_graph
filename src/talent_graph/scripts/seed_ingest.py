@@ -42,8 +42,10 @@ async def run(
 
         # Rebuild IVFFlat index for good recall after bulk inserts.
         # (The index was created on an empty table at migration time.)
+        # Note: REINDEX INDEX CONCURRENTLY cannot run inside a transaction block,
+        # so we use regular REINDEX INDEX here (safe for dev/seed contexts).
         async with get_db_session() as session:
-            await session.execute(text("REINDEX INDEX CONCURRENTLY ix_persons_embedding_ivfflat"))
+            await session.execute(text("REINDEX INDEX ix_persons_embedding_ivfflat"))
         log.info("seed.embeddings.reindex.done")
 
     if not skip_anomaly:

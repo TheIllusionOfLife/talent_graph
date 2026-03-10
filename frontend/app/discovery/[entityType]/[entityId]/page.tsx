@@ -31,7 +31,7 @@ export default async function DiscoveryPage({
 	let error: string | null = null;
 
 	try {
-		data = await discoverCandidates(entityType, entityId, mode, 20);
+		data = await discoverCandidates(entityType, entityId, mode, 20, true);
 	} catch (e) {
 		error = e instanceof Error ? e.message : "Unknown error";
 	}

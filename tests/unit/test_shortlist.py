@@ -4,6 +4,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
 
 # We test at the route handler level using TestClient with mocked DB sessions.
 
@@ -111,11 +112,7 @@ class TestShortlistCRUD:
 
         with patch("talent_graph.api.routes.shortlist.get_db_session") as mock_ctx:
             mock_session = AsyncMock()
-            # First call: get shortlist; second: get person; third: check duplicate
             mock_session.get = AsyncMock(side_effect=[sl, mock_person])
-            mock_result = MagicMock()
-            mock_result.scalar_one_or_none = MagicMock(return_value=None)  # no duplicate
-            mock_session.execute = AsyncMock(return_value=mock_result)
             mock_session.add = MagicMock()
             mock_ctx.return_value.__aenter__ = AsyncMock(return_value=mock_session)
             mock_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -127,20 +124,17 @@ class TestShortlistCRUD:
         assert response.status_code == 201
 
     def test_add_duplicate_item_rejected(self):
-        """Adding the same person twice should return 409 Conflict."""
+        """Adding the same person twice should return 409 — flush raises IntegrityError."""
         client = self._get_client()
         sl = _make_shortlist()
         mock_person = MagicMock()
         mock_person.id = "person_001"
 
-        existing_item = MagicMock()
-
         with patch("talent_graph.api.routes.shortlist.get_db_session") as mock_ctx:
             mock_session = AsyncMock()
             mock_session.get = AsyncMock(side_effect=[sl, mock_person])
-            mock_result = MagicMock()
-            mock_result.scalar_one_or_none = MagicMock(return_value=existing_item)
-            mock_session.execute = AsyncMock(return_value=mock_result)
+            mock_session.add = MagicMock()
+            mock_session.flush = AsyncMock(side_effect=IntegrityError("dup", {}, None))
             mock_ctx.return_value.__aenter__ = AsyncMock(return_value=mock_session)
             mock_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
 

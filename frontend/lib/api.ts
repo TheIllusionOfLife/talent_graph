@@ -51,8 +51,10 @@ export async function discoverCandidates(
 	entityId: string,
 	mode: RankMode = "standard",
 	limit = 20,
+	explain = false,
 ): Promise<DiscoveryResponse> {
 	const params = new URLSearchParams({ mode, limit: String(limit) });
+	if (explain) params.set("explain", "true");
 	return apiFetch<DiscoveryResponse>(
 		`/discovery/${entityType}/${entityId}?${params}`,
 	);

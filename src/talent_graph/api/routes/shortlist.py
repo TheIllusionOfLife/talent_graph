@@ -8,6 +8,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from talent_graph.api.deps import require_api_key
 from talent_graph.storage.id_gen import new_id
@@ -158,16 +159,6 @@ async def add_item(shortlist_id: str, body: ShortlistItemCreate) -> ShortlistIte
         if person is None:
             raise HTTPException(status_code=404, detail="Person not found")
 
-        # Check for duplicate
-        dup_result = await session.execute(
-            select(ShortlistItem).where(
-                ShortlistItem.shortlist_id == shortlist_id,
-                ShortlistItem.person_id == body.person_id,
-            )
-        )
-        if dup_result.scalar_one_or_none() is not None:
-            raise HTTPException(status_code=409, detail="Person already in shortlist")
-
         now = datetime.now(UTC).replace(tzinfo=None)
         item = ShortlistItem(
             shortlist_id=shortlist_id,
@@ -177,7 +168,10 @@ async def add_item(shortlist_id: str, body: ShortlistItemCreate) -> ShortlistIte
             added_at=now,
         )
         session.add(item)
-        await session.flush()
+        try:
+            await session.flush()
+        except IntegrityError as exc:
+            raise HTTPException(status_code=409, detail="Person already in shortlist") from exc
 
         return ShortlistItemOut(
             person_id=item.person_id,
