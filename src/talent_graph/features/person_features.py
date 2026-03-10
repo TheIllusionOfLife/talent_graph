@@ -55,7 +55,7 @@ async def init_prestige_names() -> bool:
         async with get_db_session() as session:
             result = await session.execute(select(PrestigeOrg.name))
             rows = result.scalars().all()
-        _prestige_names = frozenset(name.lower().strip() for name in rows)
+        _prestige_names = frozenset(name.lower().strip() for name in rows if name and name.strip())
         return True
     except Exception as exc:
         log.warning(
@@ -140,7 +140,7 @@ def compute_credibility(org_name: str | None) -> float:
     Known prestige orgs → 0.9, no org → 0.3, others → 0.5.
     Matching is case-insensitive substring check against the preloaded frozenset.
     """
-    if org_name is None:
+    if not org_name or not org_name.strip():
         return 0.3
     lower = org_name.lower().strip()
     prestige = _prestige_set()

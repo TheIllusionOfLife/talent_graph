@@ -208,7 +208,6 @@ class TestShortlistCRUD:
         # Build an IntegrityError whose orig is a real asyncpg UniqueViolationError
         orig = asyncpg.exceptions.UniqueViolationError()
         ie = IntegrityError("dup", {}, orig)
-        ie.orig = orig
 
         with patch("talent_graph.api.routes.shortlist.get_db_session") as mock_ctx:
             mock_session = AsyncMock()
