@@ -61,9 +61,9 @@ export function PersonBrief({ personId, seedText }: PersonBriefProps) {
 				<div>
 					<p className="text-xs font-medium text-blue-700 mb-1">Evidence</p>
 					<ul className="space-y-1">
-						{brief.evidence.map((e, i) => (
+						{brief.evidence.map((e) => (
 							<li
-								key={`${e.type}-${e.label}-${i}`}
+								key={`${e.type}-${e.label}-${e.detail ?? ""}`}
 								className="flex items-start gap-2 text-xs text-gray-600"
 							>
 								<span className="mt-0.5 shrink-0">
