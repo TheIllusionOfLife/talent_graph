@@ -30,8 +30,12 @@ class TestWeights:
 
     def test_required_keys_present(self):
         required = {
-            "semantic_similarity", "graph_proximity", "novelty",
-            "growth", "evidence_quality", "credibility"
+            "semantic_similarity",
+            "graph_proximity",
+            "novelty",
+            "growth",
+            "evidence_quality",
+            "credibility",
         }
         for mode, w in WEIGHTS.items():
             assert set(w.keys()) == required, f"missing keys in {mode}"
@@ -111,16 +115,28 @@ class TestScoreCandidate:
 
     def test_hidden_mode_amplifies_novelty(self):
         """A person with high novelty should score higher in HIDDEN vs STANDARD."""
-        features = self._features(novelty=1.0, growth=0.0, semantic_similarity=0.0,
-                                   graph_proximity=0.0, evidence_quality=0.0, credibility=0.0)
+        features = self._features(
+            novelty=1.0,
+            growth=0.0,
+            semantic_similarity=0.0,
+            graph_proximity=0.0,
+            evidence_quality=0.0,
+            credibility=0.0,
+        )
         standard = score_candidate(features, RankMode.STANDARD)
         hidden = score_candidate(features, RankMode.HIDDEN)
         assert hidden > standard
 
     def test_emerging_mode_amplifies_growth(self):
         """A person with high growth should score higher in EMERGING vs STANDARD."""
-        features = self._features(growth=1.0, novelty=0.0, semantic_similarity=0.0,
-                                   graph_proximity=0.0, evidence_quality=0.0, credibility=0.0)
+        features = self._features(
+            growth=1.0,
+            novelty=0.0,
+            semantic_similarity=0.0,
+            graph_proximity=0.0,
+            evidence_quality=0.0,
+            credibility=0.0,
+        )
         standard = score_candidate(features, RankMode.STANDARD)
         emerging = score_candidate(features, RankMode.EMERGING)
         assert emerging > standard

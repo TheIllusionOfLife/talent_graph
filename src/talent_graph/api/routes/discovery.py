@@ -71,6 +71,7 @@ _QUERY_MAP = {
 
 # ── Response models ─────────────────────────────────────────────────────────
 
+
 class ScoreBreakdown(BaseModel):
     semantic_similarity: float
     graph_proximity: float
@@ -97,6 +98,7 @@ class DiscoveryResponse(BaseModel):
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
+
 def _graph_proximity(hops: int) -> float:
     """Convert hop distance to [0, 1] score. Fewer hops = higher proximity."""
     if hops <= 0:
@@ -109,9 +111,7 @@ def _recent_papers(papers: list) -> int:
     return sum(1 for p in papers if p.publication_year and p.publication_year >= cutoff)
 
 
-async def _resolve_seed(
-    entity_type: str, entity_id: str
-) -> tuple[str | None, str]:
+async def _resolve_seed(entity_type: str, entity_id: str) -> tuple[str | None, str]:
     """Single DB round-trip: return (neo4j_key, embedding_text) for the seed entity."""
     async with get_db_session() as session:
         if entity_type == "paper":
@@ -147,6 +147,7 @@ async def _resolve_seed(
 
 
 # ── Route ───────────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/{entity_type}/{entity_id}",
@@ -227,9 +228,7 @@ async def discover_candidates(
         else:
             sem_sim = 0.5  # neutral fallback
 
-        source_count = sum(
-            1 for v in [person.openalex_author_id, person.github_login] if v
-        )
+        source_count = sum(1 for v in [person.openalex_author_id, person.github_login] if v)
 
         features = PersonFeatures(
             semantic_similarity=sem_sim,

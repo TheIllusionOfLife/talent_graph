@@ -132,7 +132,13 @@ class TestPersonFeatures:
             evidence_quality=0.5,
             credibility=0.5,
         )
-        for field in ["semantic_similarity", "graph_proximity", "novelty", "growth",
-                      "evidence_quality", "credibility"]:
+        for field in [
+            "semantic_similarity",
+            "graph_proximity",
+            "novelty",
+            "growth",
+            "evidence_quality",
+            "credibility",
+        ]:
             val = getattr(pf, field)
             assert 0.0 <= val <= 1.0

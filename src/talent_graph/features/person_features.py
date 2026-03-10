@@ -5,10 +5,25 @@ from dataclasses import dataclass
 
 # Elite institutions used as credibility anchors (case-insensitive prefix match)
 _ELITE_ORGS = {
-    "mit", "stanford", "harvard", "caltech", "oxford", "cambridge",
-    "berkeley", "princeton", "carnegie mellon", "cmu", "eth zurich",
-    "epfl", "toronto", "deepmind", "google research", "microsoft research",
-    "meta ai", "openai", "anthropic",
+    "mit",
+    "stanford",
+    "harvard",
+    "caltech",
+    "oxford",
+    "cambridge",
+    "berkeley",
+    "princeton",
+    "carnegie mellon",
+    "cmu",
+    "eth zurich",
+    "epfl",
+    "toronto",
+    "deepmind",
+    "google research",
+    "microsoft research",
+    "meta ai",
+    "openai",
+    "anthropic",
 }
 
 

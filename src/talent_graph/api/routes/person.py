@@ -88,7 +88,9 @@ async def get_person(person_id: str) -> PersonDetail:
             name=person.org.name,
             country_code=person.org.country_code,
             type=person.org.type,
-        ) if person.org else None,
+        )
+        if person.org
+        else None,
         papers=[
             PaperOut(
                 id=p.id,

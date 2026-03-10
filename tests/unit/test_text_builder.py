@@ -1,6 +1,5 @@
 """TDD tests for embeddings/text_builder.py."""
 
-
 from talent_graph.embeddings.text_builder import build_person_text, build_query_text
 
 
