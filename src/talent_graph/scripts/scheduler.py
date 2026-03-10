@@ -15,6 +15,7 @@ Design notes:
 import asyncio
 import signal
 import sys
+from datetime import UTC, datetime
 
 import structlog
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -62,6 +63,7 @@ def main() -> None:
         hours=settings.scheduler_interval_hours,
         max_instances=1,
         misfire_grace_time=300,
+        next_run_time=datetime.now(UTC),
         id="ingestion_pipeline",
     )
 

@@ -3,7 +3,9 @@
 import sqlalchemy
 from fastapi import APIRouter, Response, status
 from pydantic import BaseModel
+from starlette.requests import Request  # noqa: TC002
 
+from talent_graph.api.limiter import limiter
 from talent_graph.graph.neo4j_client import verify_connectivity
 from talent_graph.storage.postgres import get_db_session
 
@@ -17,7 +19,8 @@ class HealthResponse(BaseModel):
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health(response: Response) -> HealthResponse:
+@limiter.limit("60/minute")
+async def health(request: Request, response: Response) -> HealthResponse:
     # Postgres
     try:
         async with get_db_session() as session:
