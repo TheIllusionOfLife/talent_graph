@@ -157,3 +157,41 @@ class EntityLink(Base):
         String(32), default="pending"
     )  # "pending" | "merged" | "rejected"
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class Shortlist(Base):
+    """A named collection of candidate persons."""
+
+    __tablename__ = "shortlists"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)  # ULID
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # owner_key enables per-user filtering in Sprint 5 without a migration
+    owner_key: Mapped[str] = mapped_column(String(256), nullable=False, default="default")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    items: Mapped[list["ShortlistItem"]] = relationship(
+        "ShortlistItem", back_populates="shortlist", cascade="all, delete-orphan"
+    )
+
+
+class ShortlistItem(Base):
+    """A person pinned to a shortlist with optional note and ordering."""
+
+    __tablename__ = "shortlist_items"
+    __table_args__ = (UniqueConstraint("shortlist_id", "person_id"),)
+
+    shortlist_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("shortlists.id", ondelete="CASCADE"), primary_key=True
+    )
+    person_id: Mapped[str] = mapped_column(String(36), ForeignKey("persons.id"), primary_key=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    added_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    shortlist: Mapped["Shortlist"] = relationship("Shortlist", back_populates="items")
+    person: Mapped["Person"] = relationship("Person")

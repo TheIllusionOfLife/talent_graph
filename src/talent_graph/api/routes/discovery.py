@@ -1,5 +1,6 @@
 """GET /discovery/{entity_type}/{entity_id} — graph-based candidate ranking."""
 
+import asyncio
 from datetime import datetime
 from typing import Literal
 
@@ -12,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from talent_graph.api.deps import require_api_key
 from talent_graph.embeddings.generator import encode_one_async
 from talent_graph.embeddings.text_builder import build_person_text, build_query_text
+from talent_graph.explain.explanation_engine import explain as generate_explanation
 from talent_graph.features.person_features import (
     PersonFeatures,
     compute_credibility,
@@ -87,6 +89,7 @@ class CandidateResult(BaseModel):
     score: float
     breakdown: ScoreBreakdown
     hop_distance: int
+    explanation: str | None = None
 
 
 class DiscoveryResponse(BaseModel):
@@ -159,6 +162,7 @@ async def discover_candidates(
     entity_id: str,
     mode: RankMode = Query(default=RankMode.STANDARD),
     limit: int = Query(default=20, ge=1, le=100),
+    explain: bool = Query(default=False),
 ) -> DiscoveryResponse:
     """Find and rank candidate persons related to a seed entity."""
     # 1. Resolve seed (single DB round-trip)
@@ -260,10 +264,41 @@ async def discover_candidates(
         )
 
     candidates.sort(key=lambda c: c.score, reverse=True)
+    final_candidates = candidates[:limit]
+
+    # Generate explanations for top-3 after ranking+slicing (does not affect scores)
+    if explain and seed_text and final_candidates:
+        # Build a person lookup for the top-3
+        top3 = final_candidates[:3]
+        person_map = {p.id: p for p in persons}
+
+        async def _explain_candidate(candidate: CandidateResult) -> str | None:
+            person = person_map.get(candidate.id)
+            if person is None:
+                return None
+            breakdown = {
+                "semantic_similarity": candidate.breakdown.semantic_similarity,
+                "graph_proximity": candidate.breakdown.graph_proximity,
+                "novelty": candidate.breakdown.novelty,
+                "growth": candidate.breakdown.growth,
+                "evidence_quality": candidate.breakdown.evidence_quality,
+                "credibility": candidate.breakdown.credibility,
+            }
+            try:
+                return await generate_explanation(
+                    person, seed_text, breakdown, candidate.hop_distance
+                )
+            except Exception as exc:
+                log.warning("discovery.explain.failed", person_id=candidate.id, error=str(exc))
+                return None
+
+        explanations = await asyncio.gather(*[_explain_candidate(c) for c in top3])
+        for candidate, explanation in zip(top3, explanations, strict=True):
+            candidate.explanation = explanation
 
     return DiscoveryResponse(
         seed_entity_type=entity_type,
         seed_entity_id=entity_id,
         mode=mode.value,
-        candidates=candidates[:limit],
+        candidates=final_candidates,
     )
