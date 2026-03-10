@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import structlog
+import structlog.types
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -12,6 +13,7 @@ from talent_graph.api.routes import admin, health
 from talent_graph.api.routes.discovery import router as discovery_router
 from talent_graph.api.routes.person import router as person_router
 from talent_graph.api.routes.search import router as search_router
+from talent_graph.api.routes.searches import router as searches_router
 from talent_graph.api.routes.shortlist import router as shortlist_router
 from talent_graph.config.settings import get_settings
 from talent_graph.features.person_features import init_prestige_names
@@ -21,7 +23,7 @@ from talent_graph.graph.queries import CONSTRAINTS
 
 def _configure_logging(log_format: str, log_level: str) -> None:
     level = getattr(logging, log_level.upper(), logging.INFO)
-    shared_processors = [
+    shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
@@ -61,6 +63,11 @@ def create_app() -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ANN001
         if settings.api_key == "change-me-in-production":
             log.warning("api.insecure_default_key", hint="Set API_KEY env var before deployment")
+        if settings.app_secret == "change-me-in-production":
+            log.warning(
+                "api.insecure_default_secret",
+                hint="Set APP_SECRET env var — owner_hash isolation is broken with this placeholder",
+            )
         log.info("app.startup")
         try:
             for constraint in CONSTRAINTS:
@@ -94,5 +101,6 @@ def create_app() -> FastAPI:
     app.include_router(person_router)
     app.include_router(discovery_router)
     app.include_router(shortlist_router)
+    app.include_router(searches_router)
 
     return app

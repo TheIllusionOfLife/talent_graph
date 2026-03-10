@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { createShortlist, deleteShortlist, listShortlists } from "@/lib/api";
+import { useEffect, useState } from "react";
 import { ShortlistCard } from "@/components/ShortlistCard";
+import { createShortlist, deleteShortlist, listShortlists } from "@/lib/api";
 import type { ShortlistSummary } from "@/types";
 
 export default function ShortlistsPage() {
@@ -17,7 +17,9 @@ export default function ShortlistsPage() {
 	useEffect(() => {
 		listShortlists()
 			.then(setShortlists)
-			.catch((e: unknown) => setError(e instanceof Error ? e.message : "Load failed"))
+			.catch((e: unknown) =>
+				setError(e instanceof Error ? e.message : "Load failed"),
+			)
 			.finally(() => setLoading(false));
 	}, []);
 
@@ -94,14 +96,15 @@ export default function ShortlistsPage() {
 					</div>
 				</form>
 
-				{error && (
-					<p className="text-red-500 text-sm mb-4">{error}</p>
-				)}
+				{error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
 				{loading ? (
 					<div className="space-y-3">
 						{[1, 2, 3].map((i) => (
-							<div key={i} className="h-16 bg-gray-200 rounded-lg animate-pulse" />
+							<div
+								key={i}
+								className="h-16 bg-gray-200 rounded-lg animate-pulse"
+							/>
 						))}
 					</div>
 				) : shortlists.length === 0 ? (

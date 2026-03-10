@@ -204,3 +204,18 @@ class ShortlistItem(Base):
 
     shortlist: Mapped["Shortlist"] = relationship("Shortlist", back_populates="items")
     person: Mapped["Person"] = relationship("Person")
+
+
+class SavedSearch(Base):
+    """A persisted search query with optional filters, owned by an API key."""
+
+    __tablename__ = "saved_searches"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)  # ULID
+    owner_key: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    query: Mapped[str] = mapped_column(Text, nullable=False)
+    # JSON blob: {"mode": "standard", "limit": 20, "entity_type": "concept", ...}
+    filters: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

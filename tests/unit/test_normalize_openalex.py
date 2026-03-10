@@ -79,6 +79,7 @@ def test_normalize_work_author_position_string_first(work_fixture: dict) -> None
 def test_normalize_work_strips_openalex_url_prefix(work_fixture: dict) -> None:
     """IDs like 'https://openalex.org/W123' should be stored as 'W123'."""
     paper = normalize_work(work_fixture)
+    assert paper.openalex_work_id is not None
     assert not paper.openalex_work_id.startswith("http")
     assert paper.openalex_work_id == "W2741809807"
 

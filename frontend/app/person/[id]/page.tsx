@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { getPerson } from "@/lib/api";
 import { PersonBrief } from "@/components/PersonBrief";
+import { getPerson } from "@/lib/api";
 import type { PersonDetail } from "@/types";
 
 interface PersonPageProps {
@@ -85,9 +85,7 @@ export default async function PersonPage({
 				</div>
 
 				{/* AI Brief */}
-				{seedText && (
-					<PersonBrief personId={person.id} seedText={seedText} />
-				)}
+				{seedText && <PersonBrief personId={person.id} seedText={seedText} />}
 
 				{/* Papers */}
 				{person.papers.length > 0 && (

@@ -15,10 +15,6 @@ _W_NAME = 0.60
 _W_ORG = 0.20
 _W_CONCEPT = 0.20
 
-# TODO: Use these thresholds in _find_heuristic_match to short-circuit candidates
-# with very low name similarity before computing the full weighted confidence score.
-_NAME_THRESHOLD = 0.92
-_ORG_THRESHOLD = 0.85
 _AUTO_MERGE_THRESHOLD = 0.80
 _QUEUE_THRESHOLD = 0.50
 
@@ -57,11 +53,15 @@ def compute_heuristic_confidence(
     Returns a float in [0.0, 1.0].
     """
     name_sim = compute_name_similarity(a.name, b.name)
+    # Short-circuit: if even with perfect org+concept scores the weighted total
+    # cannot reach _QUEUE_THRESHOLD, skip the expensive comparisons.
+    # Floor = (_QUEUE_THRESHOLD - _W_ORG - _W_CONCEPT) / _W_NAME ≈ 0.167
+    if _W_NAME * name_sim + _W_ORG + _W_CONCEPT < _QUEUE_THRESHOLD:
+        return _W_NAME * name_sim  # cannot reach queue threshold
     org_a = a.org.name if a.org else None
     org_b = b.org.name if b.org else None
     org_sim = compute_org_similarity(org_a, org_b)
     concept_sim = compute_concept_overlap(concepts_a, concepts_b)
-
     return _W_NAME * name_sim + _W_ORG * org_sim + _W_CONCEPT * concept_sim
 
 

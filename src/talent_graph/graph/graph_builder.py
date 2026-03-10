@@ -53,7 +53,7 @@ class GraphBuilder:
             )
 
         # 3. Resolve authors that have a canonical ID
-        resolved = [ap for ap in paper.authors if ap.person.canonical_person_id is not None]
+        resolved = [ap for ap in paper.authors if ap.person.canonical_person_id]
         if not resolved:
             return
 
@@ -98,9 +98,11 @@ class GraphBuilder:
         coauthor_pairs: list[dict] = []
         for i, ap_a in enumerate(resolved):
             for ap_b in resolved[i + 1 :]:
-                id_a, id_b = sorted(
-                    [ap_a.person.canonical_person_id, ap_b.person.canonical_person_id]
-                )
+                cid_a = ap_a.person.canonical_person_id
+                cid_b = ap_b.person.canonical_person_id
+                if not cid_a or not cid_b:
+                    continue
+                id_a, id_b = sorted([cid_a, cid_b])
                 coauthor_pairs.append({"person_id_a": id_a, "person_id_b": id_b})
         if coauthor_pairs:
             await run_write_query(MERGE_COAUTHORED_BATCH, {"coauthors": coauthor_pairs})

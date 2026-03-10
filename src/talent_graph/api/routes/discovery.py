@@ -125,26 +125,26 @@ async def _resolve_seed(entity_type: str, entity_id: str) -> tuple[str | None, s
             return row.openalex_work_id, text
 
         if entity_type == "person":
-            result = await session.execute(
+            person_result = await session.execute(
                 select(Person)
                 .options(selectinload(Person.papers), selectinload(Person.org))
                 .where(Person.id == entity_id)
             )
-            row = result.scalar_one_or_none()
-            if row is None:
+            person_row = person_result.scalar_one_or_none()
+            if person_row is None:
                 return None, ""
             text = build_person_text(
-                name=row.name,
-                org_name=row.org.name if row.org else None,
-                paper_titles=[p.title for p in row.papers],
+                name=person_row.name,
+                org_name=person_row.org.name if person_row.org else None,
+                paper_titles=[p.title for p in person_row.papers],
             )
-            return row.id, text
+            return person_row.id, text
 
         if entity_type == "concept":
-            row = await session.get(Concept, entity_id)
-            if row is None:
+            concept_row = await session.get(Concept, entity_id)
+            if concept_row is None:
                 return None, ""
-            return row.openalex_concept_id, build_query_text(row.name)
+            return concept_row.openalex_concept_id, build_query_text(concept_row.name)
 
     return None, ""
 

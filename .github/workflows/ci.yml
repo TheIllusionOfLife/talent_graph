@@ -70,8 +70,40 @@ jobs:
       - name: Run tests
         run: uv run pytest --cov=src/talent_graph --cov-report=xml -v
 
+      - name: Run mypy
+        run: uv run mypy src/ tests/ --ignore-missing-imports
+
+      - name: Install pre-commit
+        run: uv run pip install pre-commit
+
+      - name: Run pre-commit
+        run: uv run pre-commit run --all-files
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage.xml
         continue-on-error: true
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.23" # pin to tested version; bump when upgrading
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint (Biome)
+        run: bun run lint
+
+      - name: Build
+        run: bun run build

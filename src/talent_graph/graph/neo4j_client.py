@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
+from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncManagedTransaction, AsyncSession
 
 from talent_graph.config.settings import get_settings
 
@@ -50,10 +50,17 @@ async def run_write_query(
     query: str,
     parameters: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Execute a write Cypher query in an explicit transaction."""
+    """Execute a write Cypher query in an explicit write transaction.
+
+    Uses ``session.execute_write``, which automatically retries the transaction
+    callback on transient failures (e.g. deadlocks, leader elections).  Because
+    the callback may be called more than once, the provided Cypher **must be
+    idempotent**.  Prefer ``MERGE`` / ``UNWIND … MERGE`` patterns over plain
+    ``CREATE``, or add existence checks before mutating.
+    """
     params = parameters or {}
 
-    async def _txn(tx: AsyncTransaction) -> list[dict[str, Any]]:
+    async def _txn(tx: AsyncManagedTransaction, /) -> list[dict[str, Any]]:
         result = await tx.run(query, params)
         return [record.data() async for record in result]
 

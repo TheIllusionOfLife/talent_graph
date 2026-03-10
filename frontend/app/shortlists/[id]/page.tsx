@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { getShortlist, removeFromShortlist } from "@/lib/api";
 import type { ShortlistOut } from "@/types";
 
@@ -31,7 +31,7 @@ export default function ShortlistDetailPage() {
 					? {
 							...prev,
 							items: prev.items.filter((item) => item.person_id !== personId),
-					  }
+						}
 					: null,
 			);
 		} catch (err: unknown) {
@@ -56,7 +56,10 @@ export default function ShortlistDetailPage() {
 		return (
 			<main className="min-h-screen bg-gray-50 px-4 py-10">
 				<div className="max-w-2xl mx-auto">
-					<Link href="/shortlists" className="text-blue-600 hover:underline text-sm">
+					<Link
+						href="/shortlists"
+						className="text-blue-600 hover:underline text-sm"
+					>
 						← Shortlists
 					</Link>
 					<p className="text-red-500 mt-4">{error ?? "Shortlist not found"}</p>
@@ -69,7 +72,10 @@ export default function ShortlistDetailPage() {
 		<main className="min-h-screen bg-gray-50 px-4 py-10">
 			<div className="max-w-2xl mx-auto">
 				<div className="flex items-center gap-2 mb-6">
-					<Link href="/shortlists" className="text-blue-600 hover:underline text-sm">
+					<Link
+						href="/shortlists"
+						className="text-blue-600 hover:underline text-sm"
+					>
 						← Shortlists
 					</Link>
 					<span className="text-gray-400">/</span>
@@ -79,7 +85,9 @@ export default function ShortlistDetailPage() {
 				<div className="mb-6">
 					<h1 className="text-2xl font-bold text-gray-900">{shortlist.name}</h1>
 					{shortlist.description && (
-						<p className="text-gray-500 text-sm mt-1">{shortlist.description}</p>
+						<p className="text-gray-500 text-sm mt-1">
+							{shortlist.description}
+						</p>
 					)}
 					<p className="text-xs text-gray-400 mt-1">
 						{shortlist.items.length} candidate
@@ -121,8 +129,7 @@ export default function ShortlistDetailPage() {
 											</p>
 										)}
 										<p className="text-xs text-gray-400 mt-1">
-											Added{" "}
-											{new Date(item.added_at).toLocaleDateString()}
+											Added {new Date(item.added_at).toLocaleDateString()}
 										</p>
 									</div>
 									<div className="flex items-center gap-3 ml-3 shrink-0">
