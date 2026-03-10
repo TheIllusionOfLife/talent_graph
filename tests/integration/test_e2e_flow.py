@@ -83,7 +83,7 @@ async def test_e2e_full_flow(
 
     assert search_resp.status_code == 200
     search_data = search_resp.json()
-    assert search_data["query"] == "attention+transformer"
+    assert search_data["query"] == "attention transformer"
     result_ids = [r["id"] for r in search_data["results"]]
     assert person_id in result_ids
 

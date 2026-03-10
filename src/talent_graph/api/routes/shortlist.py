@@ -100,7 +100,14 @@ async def create_shortlist(
         )
         session.add(sl)
         await session.flush()
-        return _shortlist_to_out(sl)
+        return ShortlistOut(
+            id=sl.id,
+            name=sl.name,
+            description=sl.description,
+            created_at=sl.created_at,
+            updated_at=sl.updated_at,
+            items=[],
+        )
 
 
 @router.get("", response_model=list[ShortlistSummary])

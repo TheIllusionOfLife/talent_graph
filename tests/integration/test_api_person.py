@@ -11,7 +11,7 @@ from tests.factories import OrgFactory, PersonFactory
 
 @pytest.mark.asyncio
 async def test_get_person_requires_auth(api_client: AsyncClient) -> None:
-    response = await api_client.get("/person/nonexistent", headers={})
+    response = await api_client.get("/person/nonexistent", headers={"X-API-Key": "bad"})
     assert response.status_code == 401
 
 

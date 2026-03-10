@@ -11,7 +11,7 @@ from tests.factories import ConceptFactory, PersonFactory
 
 @pytest.mark.asyncio
 async def test_discovery_requires_auth(api_client: AsyncClient) -> None:
-    response = await api_client.get("/discovery/concept/nonexistent", headers={})
+    response = await api_client.get("/discovery/concept/nonexistent", headers={"X-API-Key": "bad"})
     assert response.status_code == 401
 
 

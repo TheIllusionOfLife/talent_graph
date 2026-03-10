@@ -11,7 +11,7 @@ from tests.factories import PersonFactory
 
 @pytest.mark.asyncio
 async def test_search_requires_auth(api_client: AsyncClient) -> None:
-    response = await api_client.get("/search?q=machine+learning", headers={})
+    response = await api_client.get("/search?q=machine+learning", headers={"X-API-Key": "bad"})
     assert response.status_code == 401
 
 
@@ -52,7 +52,7 @@ async def test_search_returns_results(
 
     assert response.status_code == 200
     data = response.json()
-    assert data["query"] == "machine+learning"
+    assert data["query"] == "machine learning"
     assert len(data["results"]) == 1
     assert data["results"][0]["id"] == person_id
     assert data["results"][0]["name"] == "Alice Smith"
