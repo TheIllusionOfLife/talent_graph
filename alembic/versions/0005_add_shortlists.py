@@ -41,7 +41,12 @@ def upgrade() -> None:
 
     op.create_table(
         "shortlist_items",
-        sa.Column("shortlist_id", sa.String(36), sa.ForeignKey("shortlists.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column(
+            "shortlist_id",
+            sa.String(36),
+            sa.ForeignKey("shortlists.id", ondelete="CASCADE"),
+            primary_key=True,
+        ),
         sa.Column("person_id", sa.String(36), sa.ForeignKey("persons.id"), primary_key=True),
         sa.Column("note", sa.Text(), nullable=True),
         sa.Column("position", sa.Integer(), nullable=False, server_default="0"),
