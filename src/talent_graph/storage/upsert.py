@@ -1,5 +1,7 @@
 """SQLAlchemy upsert helpers (ON CONFLICT DO UPDATE — idempotent)."""
 
+from typing import cast
+
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,7 +51,7 @@ async def upsert_org(session: AsyncSession, org: OrgRecord) -> str:
         .returning(Org.id)
     )
     result = await session.execute(stmt)
-    return result.scalar_one()
+    return cast("str", result.scalar_one())
 
 
 async def upsert_person(session: AsyncSession, person: PersonRecord) -> str:
@@ -92,7 +94,7 @@ async def upsert_person(session: AsyncSession, person: PersonRecord) -> str:
         .returning(Person.id)
     )
     result = await session.execute(stmt)
-    return result.scalar_one()
+    return cast("str", result.scalar_one())
 
 
 async def upsert_concept(session: AsyncSession, concept: ConceptRecord) -> str:
@@ -118,7 +120,7 @@ async def upsert_concept(session: AsyncSession, concept: ConceptRecord) -> str:
         .returning(Concept.id)
     )
     result = await session.execute(stmt)
-    return result.scalar_one()
+    return cast("str", result.scalar_one())
 
 
 async def upsert_paper(session: AsyncSession, paper: PaperRecord) -> str:
@@ -147,7 +149,7 @@ async def upsert_paper(session: AsyncSession, paper: PaperRecord) -> str:
         .returning(Paper.id)
     )
     result = await session.execute(stmt)
-    paper_db_id = result.scalar_one()
+    paper_db_id: str = cast("str", result.scalar_one())
 
     # Upsert PaperAuthor join rows
     for authorship in paper.authors:
@@ -220,7 +222,7 @@ async def upsert_repo(
         .returning(Repo.id)
     )
     result = await session.execute(stmt)
-    return result.scalar_one()
+    return cast("str", result.scalar_one())
 
 
 async def upsert_repo_contributor(

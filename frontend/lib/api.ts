@@ -9,6 +9,7 @@ import type {
 	PersonBrief,
 	PersonDetail,
 	RankMode,
+	SavedSearchOut,
 	SearchResponse,
 	ShortlistItemOut,
 	ShortlistOut,
@@ -148,4 +149,22 @@ export async function rejectEntityLink(id: string): Promise<EntityLinkOut> {
 	return apiFetch<EntityLinkOut>(`/admin/entity-links/${id}/reject`, {
 		method: "POST",
 	});
+}
+
+export async function listSavedSearches(): Promise<SavedSearchOut[]> {
+	return apiFetch<SavedSearchOut[]>("/searches");
+}
+
+export async function createSavedSearch(
+	name: string,
+	query: string,
+): Promise<SavedSearchOut> {
+	return apiFetch<SavedSearchOut>("/searches", {
+		method: "POST",
+		body: JSON.stringify({ name, query }),
+	});
+}
+
+export async function deleteSavedSearch(id: string): Promise<void> {
+	await apiFetch<void>(`/searches/${id}`, { method: "DELETE" });
 }
