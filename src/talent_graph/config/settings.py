@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     llm_base_url: str = Field(default="http://localhost:8080/v1")
     llm_model: str = Field(default="mlx-community/Qwen3.5-35B-A3B-4bit")
     llm_timeout: int = Field(default=60)
-    llm_semaphore_size: int = Field(default=1)  # raise to 3 after latency measurement
+    llm_semaphore_size: int = Field(default=1, ge=1)  # raise to 3 after latency measurement
 
     # Embeddings
     embedding_model: str = Field(default="BAAI/bge-small-en-v1.5")

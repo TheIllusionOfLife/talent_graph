@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass
+
+import structlog
+
+log = structlog.get_logger()
 
 # Fallback set used before DB prestige table is loaded (tests / early startup)
 _ELITE_ORGS_FALLBACK: frozenset[str] = frozenset(
@@ -35,8 +40,11 @@ _ELITE_ORGS_FALLBACK: frozenset[str] = frozenset(
 _prestige_names: frozenset[str] | None = None
 
 
-async def init_prestige_names() -> None:
-    """Load prestige_orgs table into module-level frozenset (called once at startup)."""
+async def init_prestige_names() -> bool:
+    """Load prestige_orgs table into module-level frozenset (called once at startup).
+
+    Returns True if loaded from DB, False if fallback is used.
+    """
     global _prestige_names
     try:
         from sqlalchemy import select
@@ -48,9 +56,10 @@ async def init_prestige_names() -> None:
             result = await session.execute(select(PrestigeOrg.name))
             rows = result.scalars().all()
         _prestige_names = frozenset(rows)
+        return True
     except Exception:
-        # DB not available (e.g. tests without DB) — keep None so fallback is used
-        pass
+        log.warning("prestige_orgs.load_failed", detail="using hardcoded fallback")
+        return False
 
 
 def _prestige_set() -> frozenset[str]:
@@ -131,6 +140,6 @@ def compute_credibility(org_name: str | None) -> float:
     lower = org_name.lower().strip()
     prestige = _prestige_set()
     for name in prestige:
-        if name in lower:
+        if re.search(rf"\b{re.escape(name)}\b", lower):
             return 0.9
     return 0.5

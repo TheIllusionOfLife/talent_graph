@@ -43,15 +43,13 @@ mlx-server:
 # ─── Data ─────────────────────────────────────────────────────────────────────
 
 seed:
-	uv run python -m talent_graph.scripts.seed_ingest --source openalex --query "multimodal dialogue"
-	uv run python -m talent_graph.scripts.seed_ingest --source github --topic "multimodal-learning"
+	uv run python -m talent_graph.scripts.seed_ingest --source all --query "multimodal dialogue"
 
 seed-github:
-	uv run python -m talent_graph.scripts.seed_ingest --source github --topic "multimodal-learning"
+	uv run python -m talent_graph.scripts.seed_ingest --source github
 
 refresh:
-	uv run python -m talent_graph.scripts.seed_ingest --source openalex --query "multimodal dialogue"
-	uv run python -m talent_graph.scripts.seed_ingest --source github --topic "multimodal-learning"
+	uv run python -m talent_graph.scripts.seed_ingest --source all --query "multimodal dialogue"
 
 eval:
 	uv run python -m talent_graph.scripts.evaluate

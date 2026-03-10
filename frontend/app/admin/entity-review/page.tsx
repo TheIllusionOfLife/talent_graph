@@ -41,8 +41,12 @@ export default function EntityReviewPage() {
 			} else {
 				await rejectEntityLink(link.id);
 			}
-			// Reload current page; if empty go to previous
-			load(currentPage);
+			// If we just resolved the last item on this page, go to previous page
+			const nextPage =
+				page?.items.length === 1 && currentPage > 1
+					? currentPage - 1
+					: currentPage;
+			load(nextPage);
 		} catch (e: unknown) {
 			setError(e instanceof Error ? e.message : "Action failed");
 		} finally {

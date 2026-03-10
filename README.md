@@ -4,7 +4,7 @@ A Talent Discovery platform that uses knowledge graphs, embeddings, and LLM-powe
 
 ## Architecture
 
-```
+```text
 Data Sources (OpenAlex, GitHub)
   → Ingestion/ETL (fetch, normalize, entity resolution)
     → Storage (Postgres + pgvector, Neo4j, raw JSON)
@@ -120,7 +120,7 @@ Query params: `mode` (`standard`/`hidden`/`emerging`), `limit`, `explain` (bool)
 
 ## Make Targets
 
-```
+```text
 make db            Start Postgres + Neo4j (Docker)
 make db-stop       Stop databases
 make db-reset      Wipe and restart databases

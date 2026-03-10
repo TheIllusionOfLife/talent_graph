@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
 
 import asyncpg
@@ -18,6 +19,11 @@ from talent_graph.storage.postgres import get_db_session
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/shortlists", tags=["shortlists"])
+
+
+def _owner_hash(api_key: str) -> str:
+    """Return a one-way hash of the API key for safe storage and lookup."""
+    return hashlib.sha256(api_key.encode()).hexdigest()
 
 
 # ── Request / Response models ────────────────────────────────────────────────
@@ -52,7 +58,6 @@ class ShortlistOut(BaseModel):
     id: str
     name: str
     description: str | None = None
-    owner_key: str
     created_at: datetime
     updated_at: datetime
     items: list[ShortlistItemOut] = []
@@ -82,7 +87,7 @@ async def create_shortlist(
             id=shortlist_id,
             name=body.name,
             description=body.description,
-            owner_key=current_key,
+            owner_key=_owner_hash(current_key),
             created_at=now,
             updated_at=now,
         )
@@ -100,7 +105,7 @@ async def list_shortlists(
         result = await session.execute(
             select(Shortlist, func.count(ShortlistItem.person_id).label("item_count"))
             .outerjoin(ShortlistItem, ShortlistItem.shortlist_id == Shortlist.id)
-            .where(Shortlist.owner_key == current_key)
+            .where(Shortlist.owner_key == _owner_hash(current_key))
             .group_by(Shortlist.id)
             .order_by(Shortlist.created_at.desc())
         )
@@ -130,7 +135,7 @@ async def get_shortlist(
         result = await session.execute(
             select(Shortlist)
             .options(selectinload(Shortlist.items).selectinload(ShortlistItem.person))
-            .where(Shortlist.id == shortlist_id, Shortlist.owner_key == current_key)
+            .where(Shortlist.id == shortlist_id, Shortlist.owner_key == _owner_hash(current_key))
         )
         sl = result.scalar_one_or_none()
 
@@ -149,7 +154,7 @@ async def delete_shortlist(
     async with get_db_session() as session:
         result = await session.execute(
             select(Shortlist).where(
-                Shortlist.id == shortlist_id, Shortlist.owner_key == current_key
+                Shortlist.id == shortlist_id, Shortlist.owner_key == _owner_hash(current_key)
             )
         )
         sl = result.scalar_one_or_none()
@@ -172,7 +177,7 @@ async def add_item(
     async with get_db_session() as session:
         result = await session.execute(
             select(Shortlist).where(
-                Shortlist.id == shortlist_id, Shortlist.owner_key == current_key
+                Shortlist.id == shortlist_id, Shortlist.owner_key == _owner_hash(current_key)
             )
         )
         sl = result.scalar_one_or_none()
@@ -225,7 +230,7 @@ async def remove_item(
     async with get_db_session() as session:
         result = await session.execute(
             select(Shortlist).where(
-                Shortlist.id == shortlist_id, Shortlist.owner_key == current_key
+                Shortlist.id == shortlist_id, Shortlist.owner_key == _owner_hash(current_key)
             )
         )
         sl = result.scalar_one_or_none()
@@ -272,7 +277,6 @@ def _shortlist_to_out(sl: Shortlist) -> ShortlistOut:
         id=sl.id,
         name=sl.name,
         description=sl.description,
-        owner_key=sl.owner_key,
         created_at=sl.created_at,
         updated_at=sl.updated_at,
         items=items,

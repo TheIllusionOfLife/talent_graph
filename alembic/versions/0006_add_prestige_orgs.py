@@ -46,7 +46,6 @@ _SEED_ORGS = [
     ("inria", 2),
     ("tsinghua", 2),
     ("peking university", 2),
-    ("cmu", 2),
     ("columbia", 2),
     ("yale", 2),
     ("cornell", 2),

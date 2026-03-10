@@ -68,8 +68,8 @@ def create_app() -> FastAPI:
             log.info("neo4j.constraints.ok")
         except Exception as exc:
             log.warning("neo4j.constraints.failed", error=str(exc))
-        await init_prestige_names()
-        log.info("prestige_orgs.loaded")
+        loaded_from_db = await init_prestige_names()
+        log.info("prestige_orgs.loaded", source="db" if loaded_from_db else "fallback")
         yield
         await close_driver()
         log.info("app.shutdown")

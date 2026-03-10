@@ -55,11 +55,13 @@ class TestShortlistCRUD:
             )
         assert response.status_code == 201
         data = response.json()
-        # owner_key should be the caller's API key, not "default"
-        assert data["owner_key"] == "test-key"
+        # owner_key is not exposed in the response (stored as a hash internally)
+        assert "owner_key" not in data
 
     def test_create_shortlist_sets_owner_key_from_header(self):
-        """owner_key must come from the API key, never hardcoded."""
+        """owner_key must come from the API key (stored as hash), never hardcoded."""
+        import hashlib
+
         client = self._get_client()
         with patch("talent_graph.api.routes.shortlist.get_db_session") as mock_ctx:
             mock_session = AsyncMock()
@@ -68,7 +70,11 @@ class TestShortlistCRUD:
 
             response = client.post("/shortlists", json={"name": "Test"})
         assert response.status_code == 201
-        assert response.json()["owner_key"] == "test-key"
+        # Verify that the session.add was called with a Shortlist whose owner_key
+        # is the hash of "test-key" (not the raw key, not "default")
+        added = mock_session.add.call_args[0][0]
+        expected_hash = hashlib.sha256(b"test-key").hexdigest()
+        assert added.owner_key == expected_hash
 
     def test_create_shortlist_requires_auth(self):
         from talent_graph.api.main import create_app
@@ -77,6 +83,19 @@ class TestShortlistCRUD:
         client = TestClient(app)  # no API key header
         response = client.post("/shortlists", json={"name": "No Auth"})
         assert response.status_code == 401
+
+    def test_get_shortlist_cross_key_returns_404(self):
+        """owner_key filter: DB returns no row when hash doesn't match → 404."""
+        client = self._get_client()
+        with patch("talent_graph.api.routes.shortlist.get_db_session") as mock_ctx:
+            mock_session = AsyncMock()
+            # Simulate owner_key mismatch — WHERE clause filters out the row
+            mock_session.execute = _execute_returning(None)
+            mock_ctx.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            response = client.get("/shortlists/some-id")
+        assert response.status_code == 404
 
     def test_list_shortlists(self):
         client = self._get_client()

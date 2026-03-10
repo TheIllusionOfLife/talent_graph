@@ -2,6 +2,7 @@
 
 import re
 from datetime import datetime
+from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
@@ -130,7 +131,7 @@ async def get_stats() -> AdminStats:
 
 @router.get("/entity-links", response_model=EntityLinkPage)
 async def list_entity_links(
-    status: str = Query(default="pending"),
+    status: Literal["pending", "merged", "rejected"] = Query(default="pending"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> EntityLinkPage:
@@ -170,16 +171,20 @@ async def list_entity_links(
     )
 
 
-@router.post("/entity-links/{link_id}/approve", response_model=EntityLinkOut)
-async def approve_entity_link(link_id: str) -> EntityLinkOut:
-    """Approve a pending entity link (marks as merged)."""
+async def _resolve_entity_link(
+    link_id: str, new_status: Literal["merged", "rejected"]
+) -> EntityLinkOut:
+    """Shared helper: atomically transition a pending link to merged or rejected."""
     async with get_db_session() as session:
-        lnk = await session.get(EntityLink, link_id)
+        result = await session.execute(
+            select(EntityLink).where(EntityLink.id == link_id).with_for_update()
+        )
+        lnk = result.scalar_one_or_none()
         if lnk is None:
             raise HTTPException(status_code=404, detail="Entity link not found")
         if lnk.status != "pending":
             raise HTTPException(status_code=409, detail=f"Entity link is already '{lnk.status}'")
-        lnk.status = "merged"
+        lnk.status = new_status
         await session.flush()
         return EntityLinkOut(
             id=lnk.id,
@@ -190,25 +195,15 @@ async def approve_entity_link(link_id: str) -> EntityLinkOut:
             status=lnk.status,
             created_at=lnk.created_at,
         )
+
+
+@router.post("/entity-links/{link_id}/approve", response_model=EntityLinkOut)
+async def approve_entity_link(link_id: str) -> EntityLinkOut:
+    """Approve a pending entity link (marks as merged)."""
+    return await _resolve_entity_link(link_id, "merged")
 
 
 @router.post("/entity-links/{link_id}/reject", response_model=EntityLinkOut)
 async def reject_entity_link(link_id: str) -> EntityLinkOut:
     """Reject a pending entity link."""
-    async with get_db_session() as session:
-        lnk = await session.get(EntityLink, link_id)
-        if lnk is None:
-            raise HTTPException(status_code=404, detail="Entity link not found")
-        if lnk.status != "pending":
-            raise HTTPException(status_code=409, detail=f"Entity link is already '{lnk.status}'")
-        lnk.status = "rejected"
-        await session.flush()
-        return EntityLinkOut(
-            id=lnk.id,
-            person_id_a=lnk.person_id_a,
-            person_id_b=lnk.person_id_b,
-            confidence=lnk.confidence,
-            method=lnk.method,
-            status=lnk.status,
-            created_at=lnk.created_at,
-        )
+    return await _resolve_entity_link(link_id, "rejected")
