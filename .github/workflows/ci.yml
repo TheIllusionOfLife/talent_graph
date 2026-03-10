@@ -71,7 +71,7 @@ jobs:
         run: uv run pytest --cov=src/talent_graph --cov-report=xml -v
 
       - name: Run mypy
-        run: uv run mypy src/ --ignore-missing-imports
+        run: uv run mypy src/ tests/ --ignore-missing-imports
 
       - name: Install pre-commit
         run: uv run pip install pre-commit

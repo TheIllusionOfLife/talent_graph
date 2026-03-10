@@ -59,6 +59,10 @@ async def db_session_factory(postgres_url: str) -> AsyncIterator[async_sessionma
         await conn.execute(text(f"TRUNCATE TABLE {table_names} RESTART IDENTITY CASCADE"))
 
     factory = async_sessionmaker(engine, expire_on_commit=False)
+    # NOTE: deliberately patches the private `_session_factory` in postgres_module so
+    # that `get_db_session()` used by route handlers returns sessions from the test DB.
+    # This is an intentional coupling to the internal API of postgres.py; update this
+    # fixture if that module is refactored.
     original = postgres_module._session_factory
     postgres_module._session_factory = factory
     yield factory
