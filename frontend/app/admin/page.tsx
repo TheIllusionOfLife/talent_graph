@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { getAdminStats } from "@/lib/api";
 import type { AdminStats } from "@/types";
 

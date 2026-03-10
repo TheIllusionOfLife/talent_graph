@@ -1,8 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { approveEntityLink, listEntityLinks, rejectEntityLink } from "@/lib/api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	approveEntityLink,
+	listEntityLinks,
+	rejectEntityLink,
+} from "@/lib/api";
 import type { EntityLinkOut, EntityLinkPage } from "@/types";
 
 export default function EntityReviewPage() {
@@ -28,7 +32,9 @@ export default function EntityReviewPage() {
 			})
 			.catch((e: unknown) => {
 				if (e instanceof Error && e.name === "AbortError") return;
-				setError(e instanceof Error ? e.message : "Failed to load entity links");
+				setError(
+					e instanceof Error ? e.message : "Failed to load entity links",
+				);
 			})
 			.finally(() => setLoading(false));
 	}, []);
@@ -80,7 +86,10 @@ export default function EntityReviewPage() {
 					<p className="text-red-600">{error}</p>
 					<button
 						type="button"
-						onClick={() => { setError(null); load(currentPage); }}
+						onClick={() => {
+							setError(null);
+							load(currentPage);
+						}}
 						className="ml-4 text-sm text-red-700 underline hover:no-underline shrink-0"
 					>
 						Retry
@@ -91,7 +100,9 @@ export default function EntityReviewPage() {
 			{loading && <p className="text-gray-500">Loading…</p>}
 
 			{!loading && page && page.items.length === 0 && (
-				<p className="text-gray-500 italic">No pending entity links to review.</p>
+				<p className="text-gray-500 italic">
+					No pending entity links to review.
+				</p>
 			)}
 
 			{!loading && page && page.items.length > 0 && (
@@ -157,8 +168,7 @@ function EntityLinkRow({
 				</div>
 				<div className="flex gap-4 text-gray-600">
 					<span>
-						Confidence:{" "}
-						<strong>{(link.confidence * 100).toFixed(1)}%</strong>
+						Confidence: <strong>{(link.confidence * 100).toFixed(1)}%</strong>
 					</span>
 					<span>Method: {link.method}</span>
 				</div>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { useState } from "react";
 import { addToShortlist, listShortlists } from "@/lib/api";
 import type { CandidateResult, ShortlistSummary } from "@/types";
 
@@ -47,7 +47,9 @@ export function CandidateCard({ candidate, seedText }: CandidateCardProps) {
 				const data = await listShortlists();
 				setShortlists(data);
 			} catch (e) {
-				setAddError(e instanceof Error ? e.message : "Failed to load shortlists");
+				setAddError(
+					e instanceof Error ? e.message : "Failed to load shortlists",
+				);
 				setShortlists([]);
 			}
 		}
@@ -106,7 +108,10 @@ export function CandidateCard({ candidate, seedText }: CandidateCardProps) {
 								) : shortlists.length === 0 ? (
 									<p className="text-xs text-gray-400 p-2">
 										No shortlists.{" "}
-										<Link href="/shortlists" className="text-blue-500 underline">
+										<Link
+											href="/shortlists"
+											className="text-blue-500 underline"
+										>
 											Create one
 										</Link>
 									</p>
@@ -135,9 +140,7 @@ export function CandidateCard({ candidate, seedText }: CandidateCardProps) {
 				</p>
 			)}
 
-			{addError && (
-				<p className="text-xs text-red-400 mb-2">{addError}</p>
-			)}
+			{addError && <p className="text-xs text-red-400 mb-2">{addError}</p>}
 
 			<div className="space-y-1.5">
 				{Object.entries(candidate.breakdown).map(([key, val]) => (

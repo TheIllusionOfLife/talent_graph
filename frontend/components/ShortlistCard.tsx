@@ -24,7 +24,8 @@ export function ShortlistCard({ shortlist, onDelete }: ShortlistCardProps) {
 					</p>
 				)}
 				<p className="text-xs text-gray-400 mt-1">
-					{shortlist.item_count} candidate{shortlist.item_count !== 1 ? "s" : ""}
+					{shortlist.item_count} candidate
+					{shortlist.item_count !== 1 ? "s" : ""}
 					{" · "}
 					{new Date(shortlist.created_at).toLocaleDateString()}
 				</p>
