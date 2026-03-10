@@ -55,7 +55,7 @@ async def init_prestige_names() -> bool:
         async with get_db_session() as session:
             result = await session.execute(select(PrestigeOrg.name))
             rows = result.scalars().all()
-        _prestige_names = frozenset(rows)
+        _prestige_names = frozenset(name.lower().strip() for name in rows)
         return True
     except Exception as exc:
         log.warning(

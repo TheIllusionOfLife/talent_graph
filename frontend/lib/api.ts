@@ -5,6 +5,7 @@ import type {
 	DiscoveryResponse,
 	EntityLinkOut,
 	EntityLinkPage,
+	EntityLinkStatus,
 	PersonBrief,
 	PersonDetail,
 	RankMode,
@@ -124,7 +125,7 @@ export async function getAdminStats(): Promise<AdminStats> {
 }
 
 export async function listEntityLinks(
-	status = "pending",
+	status: EntityLinkStatus = "pending",
 	page = 1,
 	pageSize = 20,
 	signal?: AbortSignal,

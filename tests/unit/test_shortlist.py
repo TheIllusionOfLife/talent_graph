@@ -10,12 +10,13 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
-# Default test secret matches get_settings().app_secret in the test environment
-_TEST_SECRET = "change-me-in-production"
-
 
 def _owner_hash_test(api_key: str) -> str:
-    return hmac.new(_TEST_SECRET.encode(), api_key.encode(), hashlib.sha256).hexdigest()
+    """Compute the same HMAC as the route handler, using the live settings secret."""
+    from talent_graph.config.settings import get_settings
+
+    secret = get_settings().app_secret.encode()
+    return hmac.new(secret, api_key.encode(), hashlib.sha256).hexdigest()
 
 
 def _make_shortlist(

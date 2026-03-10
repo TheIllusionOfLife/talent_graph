@@ -68,6 +68,7 @@ Copy `.env.example` to `.env` and adjust:
 | `LLM_BASE_URL` | `http://localhost:8080/v1` | OpenAI-compatible LLM endpoint |
 | `LLM_MODEL` | `mlx-community/Qwen3.5-35B-A3B-4bit` | LLM model name |
 | `LLM_SEMAPHORE_SIZE` | `1` | Max concurrent LLM calls (raise after load testing) |
+| `APP_SECRET` | `change-me-in-production` | Secret key for HMAC-SHA256 hashing of API keys in shortlists |
 | `GITHUB_TOKEN` | `` | GitHub PAT for ingestion (5 000 req/hr) |
 | `OPENALEX_EMAIL` | `` | Polite pool email for OpenAlex |
 

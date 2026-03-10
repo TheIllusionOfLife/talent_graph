@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     # API
     api_key: str = Field(default="change-me-in-production")
-    app_secret: str = Field(default="change-me-in-production")  # HMAC key for owner_key hashing
+    app_secret: str = Field(default="change-me-in-production")
     api_host: str = Field(default="0.0.0.0")
     api_port: int = Field(default=8000)
 

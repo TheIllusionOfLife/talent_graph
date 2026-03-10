@@ -70,7 +70,7 @@ lint:
 
 format:
 	uv run ruff format src/ tests/ alembic/
-	uv run ruff check --fix src/ tests/
+	uv run ruff check --fix src/ tests/ alembic/
 
 typecheck:
 	uv run mypy src/
