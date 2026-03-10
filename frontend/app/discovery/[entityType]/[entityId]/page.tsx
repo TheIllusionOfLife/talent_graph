@@ -5,7 +5,7 @@ import type { DiscoveryResponse, RankMode } from "@/types";
 
 interface DiscoveryPageProps {
 	params: Promise<{ entityType: string; entityId: string }>;
-	searchParams: Promise<{ mode?: string }>;
+	searchParams: Promise<{ mode?: string; q?: string }>;
 }
 
 const MODES: RankMode[] = ["standard", "hidden", "emerging"];
@@ -22,7 +22,7 @@ export default async function DiscoveryPage({
 	searchParams,
 }: DiscoveryPageProps) {
 	const { entityType, entityId } = await params;
-	const { mode: rawMode } = await searchParams;
+	const { mode: rawMode, q: seedText } = await searchParams;
 	const mode: RankMode = MODES.includes(rawMode as RankMode)
 		? (rawMode as RankMode)
 		: "standard";
@@ -84,7 +84,11 @@ export default async function DiscoveryPage({
 				{data && data.candidates.length > 0 && (
 					<div className="space-y-3">
 						{data.candidates.map((candidate) => (
-							<CandidateCard key={candidate.id} candidate={candidate} />
+							<CandidateCard
+								key={candidate.id}
+								candidate={candidate}
+								seedText={seedText}
+							/>
 						))}
 					</div>
 				)}

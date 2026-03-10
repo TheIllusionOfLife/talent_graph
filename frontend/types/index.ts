@@ -26,6 +26,7 @@ export interface CandidateResult {
 	score: number;
 	breakdown: ScoreBreakdown;
 	hop_distance: number;
+	explanation: string | null;
 }
 
 export interface DiscoveryResponse {
@@ -74,3 +75,47 @@ export interface PersonDetail {
 }
 
 export type RankMode = "standard" | "hidden" | "emerging";
+
+export interface EvidenceItem {
+	type: "paper" | "repo" | "org";
+	label: string;
+	detail: string | null;
+}
+
+export interface PersonBrief {
+	person_id: string;
+	explanation: string;
+	evidence: EvidenceItem[];
+	fallback: boolean;
+}
+
+export interface ShortlistItemOut {
+	person_id: string;
+	note: string | null;
+	position: number;
+	added_at: string;
+	person: {
+		id: string;
+		name: string;
+		openalex_author_id: string | null;
+		github_login: string | null;
+	} | null;
+}
+
+export interface ShortlistOut {
+	id: string;
+	name: string;
+	description: string | null;
+	owner_key: string;
+	created_at: string;
+	updated_at: string;
+	items: ShortlistItemOut[];
+}
+
+export interface ShortlistSummary {
+	id: string;
+	name: string;
+	description: string | null;
+	created_at: string;
+	item_count: number;
+}
