@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import re
+
+_TAG_RE = re.compile(r"<[^>]*>")
+
 PROMPT_VERSION = "v1"
 
 _SYSTEM_PROMPT = """You are an expert talent analyst. Given evidence about a researcher or engineer, \
@@ -69,8 +73,9 @@ def build_brief_prompt(
     org = getattr(person, "org", None)
     org_line = f"Affiliation: {org.name}\n" if org else ""
 
-    # Sanitize seed_text: normalize whitespace to prevent prompt injection
-    safe_seed_text = " ".join(seed_text.split())[:500]
+    # Sanitize seed_text: strip XML-like tags (common injection vector) and truncate.
+    # person.name / paper.title are DB-sourced from trusted APIs (lower injection risk).
+    safe_seed_text = _TAG_RE.sub("", " ".join(seed_text.split()))[:500]
 
     user_prompt = _USER_TEMPLATE.format(
         seed_text=safe_seed_text,
