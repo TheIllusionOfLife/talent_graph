@@ -46,3 +46,5 @@ frontend/out/
 
 # Alembic
 alembic/versions/__pycache__/
+
+.playwright-cli/

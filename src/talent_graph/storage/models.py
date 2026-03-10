@@ -2,6 +2,7 @@
 
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
     Boolean,
@@ -36,6 +37,7 @@ class Person(Base):
     org_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("orgs.id"), nullable=True)
     raw_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     hidden_expert_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()

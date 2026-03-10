@@ -39,8 +39,9 @@ async def db_session_factory(postgres_url: str):
     """Create tables and truncate them for each test, then restore module-level factory."""
     engine = create_async_engine(postgres_url, echo=False)
 
-    # Create all tables (idempotent via checkfirst=True)
+    # Enable pgvector extension before creating tables (vector type must exist first)
     async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(lambda c: Base.metadata.create_all(c, checkfirst=True))
 
     factory = async_sessionmaker(engine, expire_on_commit=False)
