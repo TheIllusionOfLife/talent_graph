@@ -8,8 +8,7 @@ test.describe("Admin entity-link review flow", () => {
 
 	test("admin page has stats section", async ({ page }) => {
 		await page.goto("/admin");
-		// Page should render without a runtime error
-		const main = page.getByRole("main");
-		await expect(main).toBeVisible();
+		const heading = page.getByRole("heading", { name: /admin/i });
+		await expect(heading.first()).toBeVisible();
 	});
 });

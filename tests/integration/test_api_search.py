@@ -69,7 +69,7 @@ async def test_search_empty_results(api_client: AsyncClient) -> None:
             return_value=[0.0] * 384,
         ),
         patch(
-            "talent_graph.storage.vector_store.search_similar",
+            "talent_graph.api.routes.search.search_similar",
             new_callable=AsyncMock,
             return_value=[],
         ),

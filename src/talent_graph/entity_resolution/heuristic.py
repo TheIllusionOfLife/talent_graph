@@ -53,12 +53,10 @@ def compute_heuristic_confidence(
     Returns a float in [0.0, 1.0].
     """
     name_sim = compute_name_similarity(a.name, b.name)
-    # Short-circuit: if name similarity is below a practical floor, skip expensive
-    # org/concept comparisons — the weighted score cannot reach _QUEUE_THRESHOLD (0.50)
-    # when name_sim < 0.50 / _W_NAME ≈ 0.83 even with perfect org+concept match
-    # (0.50 * 0.83 + 0.20 * 1.0 + 0.20 * 1.0 = 0.815 < 0.83). A safe early-exit
-    # threshold is 0.70 to avoid false negatives when org/concept is strong.
-    if name_sim < 0.70:
+    # Short-circuit: if even with perfect org+concept scores the weighted total
+    # cannot reach _QUEUE_THRESHOLD, skip the expensive comparisons.
+    # Floor = (_QUEUE_THRESHOLD - _W_ORG - _W_CONCEPT) / _W_NAME ≈ 0.167
+    if _W_NAME * name_sim + _W_ORG + _W_CONCEPT < _QUEUE_THRESHOLD:
         return _W_NAME * name_sim  # cannot reach queue threshold
     org_a = a.org.name if a.org else None
     org_b = b.org.name if b.org else None

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 from datetime import UTC, datetime
 
 import structlog
@@ -11,19 +9,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from talent_graph.api.deps import get_current_key
-from talent_graph.config.settings import get_settings
+from talent_graph.api.auth import owner_hash, require_any_api_key
 from talent_graph.storage.id_gen import new_id
 from talent_graph.storage.models import SavedSearch
 from talent_graph.storage.postgres import get_db_session
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/searches", tags=["searches"])
-
-
-def _owner_hash(api_key: str) -> str:
-    secret = get_settings().app_secret.encode()
-    return hmac.new(secret, api_key.encode(), hashlib.sha256).hexdigest()
 
 
 class SavedSearchCreate(BaseModel):
@@ -44,14 +36,14 @@ class SavedSearchOut(BaseModel):
 @router.post("", status_code=201, response_model=SavedSearchOut)
 async def create_saved_search(
     body: SavedSearchCreate,
-    current_key: str = Depends(get_current_key),
+    current_key: str = Depends(require_any_api_key),
 ) -> SavedSearchOut:
     search_id = new_id()
     now = datetime.now(UTC).replace(tzinfo=None)
     async with get_db_session() as session:
         search = SavedSearch(
             id=search_id,
-            owner_key=_owner_hash(current_key),
+            owner_key=owner_hash(current_key),
             name=body.name,
             query=body.query,
             filters=body.filters,
@@ -71,12 +63,12 @@ async def create_saved_search(
 
 @router.get("", response_model=list[SavedSearchOut])
 async def list_saved_searches(
-    current_key: str = Depends(get_current_key),
+    current_key: str = Depends(require_any_api_key),
 ) -> list[SavedSearchOut]:
     async with get_db_session() as session:
         result = await session.execute(
             select(SavedSearch)
-            .where(SavedSearch.owner_key == _owner_hash(current_key))
+            .where(SavedSearch.owner_key == owner_hash(current_key))
             .order_by(SavedSearch.created_at.desc())
         )
         searches = result.scalars().all()
@@ -96,13 +88,13 @@ async def list_saved_searches(
 @router.get("/{search_id}", response_model=SavedSearchOut)
 async def get_saved_search(
     search_id: str,
-    current_key: str = Depends(get_current_key),
+    current_key: str = Depends(require_any_api_key),
 ) -> SavedSearchOut:
     async with get_db_session() as session:
         result = await session.execute(
             select(SavedSearch).where(
                 SavedSearch.id == search_id,
-                SavedSearch.owner_key == _owner_hash(current_key),
+                SavedSearch.owner_key == owner_hash(current_key),
             )
         )
         search = result.scalar_one_or_none()
@@ -121,13 +113,13 @@ async def get_saved_search(
 @router.delete("/{search_id}", status_code=204)
 async def delete_saved_search(
     search_id: str,
-    current_key: str = Depends(get_current_key),
+    current_key: str = Depends(require_any_api_key),
 ) -> None:
     async with get_db_session() as session:
         result = await session.execute(
             select(SavedSearch).where(
                 SavedSearch.id == search_id,
-                SavedSearch.owner_key == _owner_hash(current_key),
+                SavedSearch.owner_key == owner_hash(current_key),
             )
         )
         search = result.scalar_one_or_none()

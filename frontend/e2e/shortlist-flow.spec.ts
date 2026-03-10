@@ -8,8 +8,7 @@ test.describe("Shortlist flow", () => {
 
 	test("shortlists page has expected heading", async ({ page }) => {
 		await page.goto("/shortlists");
-		// Should show some heading text related to shortlists
-		const heading = page.getByRole("heading");
+		const heading = page.getByRole("heading", { name: /shortlist/i });
 		await expect(heading.first()).toBeVisible();
 	});
 });

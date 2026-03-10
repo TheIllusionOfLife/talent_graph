@@ -3,7 +3,8 @@ import { expect, test } from "@playwright/test";
 test.describe("Search → Discovery → Person Detail flow", () => {
 	test("search bar is visible on home page", async ({ page }) => {
 		await page.goto("/");
-		await expect(page.getByRole("main")).toBeVisible();
+		const searchInput = page.getByRole("textbox");
+		await expect(searchInput).toBeVisible();
 	});
 
 	test("empty search shows no results", async ({ page }) => {

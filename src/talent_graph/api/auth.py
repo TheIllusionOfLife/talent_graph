@@ -1,5 +1,6 @@
 """API key authentication."""
 
+import hashlib
 import hmac
 
 from fastapi import HTTPException, Security, status
@@ -8,6 +9,16 @@ from fastapi.security import APIKeyHeader
 from talent_graph.config.settings import get_settings
 
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def owner_hash(api_key: str) -> str:
+    """Return an HMAC-SHA256 digest of the API key using the configured app secret.
+
+    Never stores the raw key — only this digest is persisted and compared.
+    Used by multi-tenant routes (shortlists, saved searches).
+    """
+    secret = get_settings().app_secret.encode()
+    return hmac.new(secret, api_key.encode(), hashlib.sha256).hexdigest()
 
 
 async def require_api_key(api_key: str | None = Security(_api_key_header)) -> str:
@@ -42,4 +53,4 @@ async def require_api_key_returning(
     api_key: str | None = Security(_api_key_header),
 ) -> str:
     """Dependency: validates X-API-Key and returns the key string for use in handler body."""
-    return await require_any_api_key(api_key)
+    return await require_api_key(api_key)

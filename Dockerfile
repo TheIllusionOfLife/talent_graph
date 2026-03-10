@@ -29,6 +29,11 @@ ENV PYTHONPATH="/app/src:$PYTHONPATH"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+# Run as non-root user
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+RUN chown -R appuser:appgroup /app
+USER appuser
+
 EXPOSE 8000
 
 # Liveness check — /health has no auth requirement
