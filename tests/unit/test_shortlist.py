@@ -29,6 +29,7 @@ class TestShortlistCRUD:
 
     def _get_client(self) -> TestClient:
         from talent_graph.api.main import create_app
+
         app = create_app()
         return TestClient(app, headers={"X-API-Key": "test-key"})
 

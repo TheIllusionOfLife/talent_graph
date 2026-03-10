@@ -68,9 +68,7 @@ class TestLLMClient:
     @respx.mock
     @pytest.mark.asyncio
     async def test_missing_choices_raises_llm_unavailable(self):
-        respx.post(CHAT_URL).mock(
-            return_value=Response(200, json={"choices": []})
-        )
+        respx.post(CHAT_URL).mock(return_value=Response(200, json={"choices": []}))
         client = LLMClient(base_url=BASE_URL, timeout=5)
         with pytest.raises(LLMUnavailableError):
             await client.complete("sys", "user")
@@ -83,7 +81,10 @@ class TestLLMClient:
         async def raise_connect_error(*args, **kwargs):
             raise httpx.ConnectError("Connection refused")
 
-        with patch("httpx.AsyncClient.post", new=raise_connect_error), pytest.raises(LLMUnavailableError):
+        with (
+            patch("httpx.AsyncClient.post", new=raise_connect_error),
+            pytest.raises(LLMUnavailableError),
+        ):
             await client.complete("sys", "user")
 
     @respx.mock
@@ -94,6 +95,7 @@ class TestLLMClient:
 
         async def capture(request):
             import json
+
             captured["body"] = json.loads(request.content)
             return Response(
                 200,

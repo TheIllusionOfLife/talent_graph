@@ -61,6 +61,7 @@ class TestExplainFunction:
 
         # Reset module singleton so we get a fresh engine with a mocked LLM
         import talent_graph.explain.explanation_engine as eng_module
+
         original_engine = eng_module._engine
         try:
             engine = ExplanationEngine.__new__(ExplanationEngine)
@@ -95,9 +96,7 @@ class TestExplanationEngine:
 
         with (
             patch("talent_graph.explain.explanation_engine.build_brief_prompt") as mock_prompt,
-            patch(
-                "talent_graph.explain.explanation_engine.LLMClient"
-            ) as mock_client_class,
+            patch("talent_graph.explain.explanation_engine.LLMClient") as mock_client_class,
         ):
             mock_prompt.return_value = ("system content", "user content")
             mock_instance = AsyncMock()
