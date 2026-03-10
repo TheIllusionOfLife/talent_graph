@@ -2,9 +2,13 @@
 
 import type {
 	DiscoveryResponse,
+	PersonBrief,
 	PersonDetail,
 	RankMode,
 	SearchResponse,
+	ShortlistItemOut,
+	ShortlistOut,
+	ShortlistSummary,
 } from "@/types";
 
 // BASE_URL is NEXT_PUBLIC so it can be configured per-environment.
@@ -27,6 +31,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 		throw new Error(`API ${res.status}: ${detail}`);
 	}
 
+	if (res.status === 204) {
+		return undefined as T;
+	}
+
 	return res.json() as Promise<T>;
 }
 
@@ -43,8 +51,10 @@ export async function discoverCandidates(
 	entityId: string,
 	mode: RankMode = "standard",
 	limit = 20,
+	explain = false,
 ): Promise<DiscoveryResponse> {
 	const params = new URLSearchParams({ mode, limit: String(limit) });
+	if (explain) params.set("explain", "true");
 	return apiFetch<DiscoveryResponse>(
 		`/discovery/${entityType}/${entityId}?${params}`,
 	);
@@ -52,4 +62,56 @@ export async function discoverCandidates(
 
 export async function getPerson(personId: string): Promise<PersonDetail> {
 	return apiFetch<PersonDetail>(`/person/${personId}`);
+}
+
+export async function getPersonBrief(
+	personId: string,
+	seedText: string,
+): Promise<PersonBrief> {
+	return apiFetch<PersonBrief>(`/person/${personId}/brief`, {
+		method: "POST",
+		body: JSON.stringify({ seed_text: seedText }),
+	});
+}
+
+export async function listShortlists(): Promise<ShortlistSummary[]> {
+	return apiFetch<ShortlistSummary[]>("/shortlists");
+}
+
+export async function createShortlist(
+	name: string,
+	description?: string,
+): Promise<ShortlistOut> {
+	return apiFetch<ShortlistOut>("/shortlists", {
+		method: "POST",
+		body: JSON.stringify({ name, description }),
+	});
+}
+
+export async function getShortlist(id: string): Promise<ShortlistOut> {
+	return apiFetch<ShortlistOut>(`/shortlists/${id}`);
+}
+
+export async function deleteShortlist(id: string): Promise<void> {
+	await apiFetch<void>(`/shortlists/${id}`, { method: "DELETE" });
+}
+
+export async function addToShortlist(
+	shortlistId: string,
+	personId: string,
+	note?: string,
+): Promise<ShortlistItemOut> {
+	return apiFetch<ShortlistItemOut>(`/shortlists/${shortlistId}/items`, {
+		method: "POST",
+		body: JSON.stringify({ person_id: personId, note }),
+	});
+}
+
+export async function removeFromShortlist(
+	shortlistId: string,
+	personId: string,
+): Promise<void> {
+	await apiFetch<void>(`/shortlists/${shortlistId}/items/${personId}`, {
+		method: "DELETE",
+	});
 }

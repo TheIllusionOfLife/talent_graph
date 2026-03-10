@@ -1,13 +1,19 @@
 import Link from "next/link";
 import { getPerson } from "@/lib/api";
+import { PersonBrief } from "@/components/PersonBrief";
 import type { PersonDetail } from "@/types";
 
 interface PersonPageProps {
 	params: Promise<{ id: string }>;
+	searchParams: Promise<{ q?: string }>;
 }
 
-export default async function PersonPage({ params }: PersonPageProps) {
+export default async function PersonPage({
+	params,
+	searchParams,
+}: PersonPageProps) {
 	const { id } = await params;
+	const { q: seedText } = await searchParams;
 
 	let person: PersonDetail | undefined;
 	let error: string | null = null;
@@ -77,6 +83,11 @@ export default async function PersonPage({ params }: PersonPageProps) {
 						)}
 					</div>
 				</div>
+
+				{/* AI Brief */}
+				{seedText && (
+					<PersonBrief personId={person.id} seedText={seedText} />
+				)}
 
 				{/* Papers */}
 				{person.papers.length > 0 && (
