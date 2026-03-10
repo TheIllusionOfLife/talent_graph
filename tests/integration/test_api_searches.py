@@ -127,9 +127,7 @@ async def test_get_saved_search_wrong_owner_404(
 
 @pytest.mark.asyncio
 async def test_delete_saved_search(api_client: AsyncClient) -> None:
-    create_resp = await api_client.post(
-        "/searches", json={"name": "To Delete", "query": "bye"}
-    )
+    create_resp = await api_client.post("/searches", json={"name": "To Delete", "query": "bye"})
     search_id = create_resp.json()["id"]
 
     delete_resp = await api_client.delete(f"/searches/{search_id}")
