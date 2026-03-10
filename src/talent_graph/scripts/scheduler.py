@@ -37,13 +37,13 @@ async def run_ingestion_pipeline() -> None:
         )
         log.info("scheduler.openalex.done", stats=stats)
     except Exception as exc:
-        log.error("scheduler.openalex.failed", error=str(exc))
+        log.error("scheduler.openalex.failed", error=str(exc), exc_info=True)
 
     try:
         stats = await ingest_github(repos=settings.scheduler_github_repos)
         log.info("scheduler.github.done", stats=stats)
     except Exception as exc:
-        log.error("scheduler.github.failed", error=str(exc))
+        log.error("scheduler.github.failed", error=str(exc), exc_info=True)
 
     log.info("scheduler.pipeline.done")
 

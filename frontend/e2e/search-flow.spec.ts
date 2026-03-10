@@ -22,7 +22,7 @@ test.describe("Search → Discovery → Person Detail flow", () => {
 test.describe("Save search flow", () => {
 	test("Save button appears after typing in search bar", async ({ page }) => {
 		await page.goto("/");
-		const searchInput = page.getByRole("textbox").first();
+		const searchInput = page.getByPlaceholder(/search for researchers/i);
 		await searchInput.fill("machine learning");
 		const saveButton = page.getByRole("button", { name: /^save$/i });
 		await expect(saveButton).toBeVisible();
@@ -30,7 +30,7 @@ test.describe("Save search flow", () => {
 
 	test("clicking Save reveals the name input field", async ({ page }) => {
 		await page.goto("/");
-		const searchInput = page.getByRole("textbox").first();
+		const searchInput = page.getByPlaceholder(/search for researchers/i);
 		await searchInput.fill("machine learning");
 		await page.getByRole("button", { name: /^save$/i }).click();
 		const nameInput = page.getByPlaceholder(/name this search/i);
@@ -39,7 +39,7 @@ test.describe("Save search flow", () => {
 
 	test("Cancel button closes the save form", async ({ page }) => {
 		await page.goto("/");
-		const searchInput = page.getByRole("textbox").first();
+		const searchInput = page.getByPlaceholder(/search for researchers/i);
 		await searchInput.fill("machine learning");
 		await page.getByRole("button", { name: /^save$/i }).click();
 		await expect(page.getByPlaceholder(/name this search/i)).toBeVisible();
