@@ -1,6 +1,6 @@
 """GitHub REST API client with retry and token authentication."""
 
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
@@ -43,7 +43,7 @@ class GitHubClient:
 
     async def get_repo(self, owner: str, repo: str) -> dict[str, Any]:
         """Fetch repository metadata."""
-        return await self._get(f"/repos/{owner}/{repo}")
+        return cast("dict[str, Any]", await self._get(f"/repos/{owner}/{repo}"))
 
     async def get_contributors(
         self,
@@ -77,7 +77,7 @@ class GitHubClient:
 
     async def get_user(self, username: str) -> dict[str, Any]:
         """Fetch a GitHub user's public profile."""
-        return await self._get(f"/users/{username}")
+        return cast("dict[str, Any]", await self._get(f"/users/{username}"))
 
     async def aclose(self) -> None:
         await self._client.aclose()

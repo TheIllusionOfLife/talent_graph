@@ -1,6 +1,6 @@
 """OpenAlex REST API client with retry and polite-pool support."""
 
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
@@ -41,7 +41,7 @@ class OpenAlexClient:
     async def _get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         response = await self._client.get(path, params=self._params(params))
         response.raise_for_status()
-        return response.json()
+        return cast("dict[str, Any]", response.json())
 
     async def get_works(
         self,
@@ -56,7 +56,7 @@ class OpenAlexClient:
             "cursor": cursor or "*",
         }
         data = await self._get("/works", params)
-        return data.get("results", [])
+        return cast("list[dict[str, Any]]", data.get("results", []))
 
     async def get_works_paginated(
         self,
@@ -86,7 +86,7 @@ class OpenAlexClient:
     async def get_author(self, author_id: str) -> dict[str, Any]:
         """Fetch a single author by OpenAlex ID (with or without 'A' prefix)."""
         clean_id = author_id.lstrip("A") if author_id.startswith("A") else author_id
-        return await self._get(f"/authors/A{clean_id}")
+        return cast("dict[str, Any]", await self._get(f"/authors/A{clean_id}"))
 
     async def aclose(self) -> None:
         await self._client.aclose()

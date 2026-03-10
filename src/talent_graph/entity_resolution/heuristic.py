@@ -6,6 +6,8 @@ Confidence thresholds:
   < 0.5  → no match
 """
 
+from typing import cast
+
 import jellyfish
 
 from talent_graph.normalize.common_schema import PersonRecord
@@ -23,14 +25,14 @@ def compute_name_similarity(a: str, b: str) -> float:
     """Jaro-Winkler similarity between two name strings. Returns 0.0 for empty inputs."""
     if not a or not b:
         return 0.0
-    return jellyfish.jaro_winkler_similarity(a.strip().lower(), b.strip().lower())
+    return cast("float", jellyfish.jaro_winkler_similarity(a.strip().lower(), b.strip().lower()))
 
 
 def compute_org_similarity(a: str | None, b: str | None) -> float:
     """Jaro-Winkler similarity between two org name strings. Returns 0.0 if either is None."""
     if not a or not b:
         return 0.0
-    return jellyfish.jaro_winkler_similarity(a.strip().lower(), b.strip().lower())
+    return cast("float", jellyfish.jaro_winkler_similarity(a.strip().lower(), b.strip().lower()))
 
 
 def compute_concept_overlap(a: list[str], b: list[str]) -> float:

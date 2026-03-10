@@ -2,7 +2,7 @@
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, cast
 
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncManagedTransaction, AsyncSession
 
@@ -65,7 +65,7 @@ async def run_write_query(
         return [record.data() async for record in result]
 
     async with get_session() as session:
-        return await session.execute_write(_txn)
+        return cast("list[dict[str, Any]]", await session.execute_write(_txn))
 
 
 async def verify_connectivity() -> bool:

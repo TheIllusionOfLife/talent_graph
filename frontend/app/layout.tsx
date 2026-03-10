@@ -41,6 +41,9 @@ export default function RootLayout({
 					>
 						Shortlists
 					</Link>
+					<Link href="/searches" className="text-gray-500 hover:text-gray-900">
+						Saved Searches
+					</Link>
 				</nav>
 				{children}
 			</body>

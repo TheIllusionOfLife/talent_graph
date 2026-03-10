@@ -144,3 +144,12 @@ export interface EntityLinkPage {
 	page: number;
 	page_size: number;
 }
+
+export interface SavedSearchOut {
+	id: string;
+	name: string;
+	query: string;
+	filters: Record<string, unknown> | null;
+	created_at: string;
+	last_run_at: string | null;
+}

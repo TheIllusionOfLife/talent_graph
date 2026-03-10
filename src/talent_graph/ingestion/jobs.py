@@ -28,7 +28,7 @@ log = structlog.get_logger()
 
 def _work_id(raw_work: dict, fallback_index: int) -> str:
     """Extract stable work ID from raw response; use content-hash fallback."""
-    raw_id = raw_work.get("id", "")
+    raw_id: str = raw_work.get("id", "")
     if raw_id:
         return raw_id.split("/")[-1]
     content_hash = hashlib.sha1(

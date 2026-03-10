@@ -5,6 +5,7 @@ import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
 
 from talent_graph.config.settings import get_settings
 
@@ -39,4 +40,4 @@ class RawStore:
         matches = sorted(Path(p) for p in glob_module.glob(pattern))
         if not matches:
             return None
-        return json.loads(matches[-1].read_text(encoding="utf-8"))
+        return cast("dict[Any, Any]", json.loads(matches[-1].read_text(encoding="utf-8")))

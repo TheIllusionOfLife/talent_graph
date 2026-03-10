@@ -39,7 +39,8 @@ async def resolve_deterministic(session: AsyncSession, person: PersonRecord) -> 
         result = await session.execute(
             select(Person.id).where(Person.openalex_author_id == person.openalex_author_id)
         )
-        if found := result.scalar_one_or_none():
+        found: str | None = result.scalar_one_or_none()
+        if found:
             return found
 
     # 1. ORCID match
@@ -47,7 +48,8 @@ async def resolve_deterministic(session: AsyncSession, person: PersonRecord) -> 
         bare = _normalize_orcid(person.orcid)
         if bare:
             result = await session.execute(select(Person.id).where(Person.orcid == bare))
-            if found := result.scalar_one_or_none():
+            found = result.scalar_one_or_none()
+            if found:
                 return found
 
     # 2. Direct github_login match (case-insensitive — GitHub logins are case-insensitive)
@@ -55,7 +57,8 @@ async def resolve_deterministic(session: AsyncSession, person: PersonRecord) -> 
         result = await session.execute(
             select(Person.id).where(func.lower(Person.github_login) == person.github_login.lower())
         )
-        if found := result.scalar_one_or_none():
+        found = result.scalar_one_or_none()
+        if found:
             return found
 
     # 3. GitHub URL in OpenAlex homepage (case-insensitive login match)
@@ -65,7 +68,8 @@ async def resolve_deterministic(session: AsyncSession, person: PersonRecord) -> 
             result = await session.execute(
                 select(Person.id).where(func.lower(Person.github_login) == login.lower())
             )
-            if found := result.scalar_one_or_none():
+            found = result.scalar_one_or_none()
+            if found:
                 return found
 
     # 4. Email match (case-insensitive; no unique constraint — use first() to avoid MultipleResultsFound)
@@ -74,7 +78,8 @@ async def resolve_deterministic(session: AsyncSession, person: PersonRecord) -> 
         result = await session.execute(
             select(Person.id).where(func.lower(Person.email) == normalized_email).limit(1)
         )
-        if found := result.scalars().first():
+        found = result.scalars().first()
+        if found:
             return found
 
     return None
