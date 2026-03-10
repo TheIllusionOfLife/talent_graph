@@ -27,6 +27,7 @@ Hop distance from seed: {hop_distance}
 Write a 2-3 sentence brief explaining why this person is relevant to "{seed_text}"."""
 
 _FALLBACK_TEMPLATE = """\
+{seed_context}\
 {name} is a researcher{org_phrase} with {paper_count} publication(s) and a relevance score of \
 {score:.2f}. Their profile shows {novelty_label} citation prominence and {growth_label} recent \
 publication activity, suggesting they may be a {expert_label}.\
@@ -64,22 +65,23 @@ def build_brief_prompt(
     # Truncate paper list to stay within token budget (~2K input tokens)
     top_papers = sorted(papers, key=lambda p: getattr(p, "citation_count", 0), reverse=True)[:8]
     paper_lines = "\n".join(
-        f"  - {p.title} ({getattr(p, 'publication_year', '?')}, {getattr(p, 'citation_count', 0)} citations)"
+        f"  - {_TAG_RE.sub('', p.title).strip()} ({getattr(p, 'publication_year', '?')}, {getattr(p, 'citation_count', 0)} citations)"
         for p in top_papers
     )
     if not paper_lines:
         paper_lines = "  (none)"
 
     org = getattr(person, "org", None)
-    org_line = f"Affiliation: {org.name}\n" if org else ""
+    safe_org_name = _TAG_RE.sub("", org.name).strip() if org else ""
+    org_line = f"Affiliation: {safe_org_name}\n" if org else ""
 
-    # Sanitize seed_text: strip XML-like tags (common injection vector) and truncate.
-    # person.name / paper.title are DB-sourced from trusted APIs (lower injection risk).
+    # Sanitize all user-visible strings: strip XML-like tags (common prompt injection vector).
     safe_seed_text = _TAG_RE.sub("", " ".join(seed_text.split()))[:500]
+    safe_name = _TAG_RE.sub("", person.name).strip()
 
     user_prompt = _USER_TEMPLATE.format(
         seed_text=safe_seed_text,
-        name=person.name,
+        name=safe_name,
         org_line=org_line,
         paper_count=len(papers),
         recent_count=len(recent_papers),
@@ -104,12 +106,16 @@ def build_brief_prompt(
 def render_template_fallback(
     person: object,
     score_breakdown: dict[str, float],
+    seed_text: str | None = None,
+    hop_distance: int | None = None,
 ) -> str:
     """Render a template-based brief without LLM (offline fallback).
 
     Args:
         person: Person ORM object.
         score_breakdown: Dict with ranking signal scores.
+        seed_text: Optional search query to include in the brief for context.
+        hop_distance: Optional graph hop distance from the seed entity.
 
     Returns:
         Plain-text brief string.
@@ -117,6 +123,12 @@ def render_template_fallback(
     papers = getattr(person, "papers", []) or []
     org = getattr(person, "org", None)
     org_phrase = f" affiliated with {org.name}" if org else ""
+
+    seed_context = ""
+    if seed_text:
+        safe_seed = _TAG_RE.sub("", " ".join(seed_text.split()))[:200]
+        hop_part = f" (hop distance: {hop_distance})" if hop_distance is not None else ""
+        seed_context = f'For search "{safe_seed}"{hop_part}, '
 
     novelty = score_breakdown.get("novelty", 0.5)
     growth = score_breakdown.get("growth", 0.5)
@@ -137,6 +149,7 @@ def render_template_fallback(
         expert_label = "relevant candidate"
 
     return _FALLBACK_TEMPLATE.format(
+        seed_context=seed_context,
         name=person.name,
         org_phrase=org_phrase,
         paper_count=len(papers),

@@ -172,7 +172,7 @@ async def get_person_brief(person_id: str, body: BriefRequest) -> PersonBrief:
     # Detect whether fallback was used by comparing with template output
     from talent_graph.explain.prompt_templates import render_template_fallback
 
-    template_text = render_template_fallback(person, score_breakdown)
+    template_text = render_template_fallback(person, score_breakdown, seed_text=body.seed_text)
     explanation = await explain(person, body.seed_text, score_breakdown)
     used_fallback = explanation == template_text
 

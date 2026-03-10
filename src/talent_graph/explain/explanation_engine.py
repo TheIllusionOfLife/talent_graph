@@ -88,7 +88,9 @@ class ExplanationEngine:
                 log.debug("explanation.llm_success", person_id=person.id)
             except LLMUnavailableError as exc:
                 log.warning("explanation.fallback", person_id=person.id, reason=str(exc))
-                text = render_template_fallback(person, score_breakdown)
+                text = render_template_fallback(
+                    person, score_breakdown, seed_text=seed_text, hop_distance=hop_distance
+                )
 
         self._cache[key] = text
         return text

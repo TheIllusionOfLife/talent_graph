@@ -105,7 +105,8 @@ class TestExplanationEngine:
 
             engine._llm = mock_instance
             result = await engine.explain(person, "multimodal", breakdown)
-            assert "LLM explanation" in result or isinstance(result, str)
+            assert result == "LLM explanation text"
+            mock_instance.complete.assert_awaited_once_with("system content", "user content")
 
     @pytest.mark.asyncio
     async def test_cache_hit_skips_llm(self):
