@@ -87,7 +87,9 @@ def create_app() -> FastAPI:
                 )
         else:
             if settings.api_key == _DEFAULT:
-                log.warning("api.insecure_default_key", hint="Set API_KEY env var before deployment")
+                log.warning(
+                    "api.insecure_default_key", hint="Set API_KEY env var before deployment"
+                )
             if settings.app_secret == _DEFAULT:
                 log.warning(
                     "api.insecure_default_secret",

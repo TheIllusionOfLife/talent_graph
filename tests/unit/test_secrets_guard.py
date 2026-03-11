@@ -34,7 +34,11 @@ class TestSecretsGuard:
         with (
             patch("talent_graph.api.main.get_settings", return_value=settings),
             patch("talent_graph.api.main.run_write_query", new_callable=AsyncMock),
-            patch("talent_graph.api.main.init_prestige_names", new_callable=AsyncMock, return_value=True),
+            patch(
+                "talent_graph.api.main.init_prestige_names",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
             patch("talent_graph.api.main.close_driver", new_callable=AsyncMock),
             pytest.raises(RuntimeError, match="default.*production"),
         ):
@@ -56,7 +60,11 @@ class TestSecretsGuard:
         with (
             patch("talent_graph.api.main.get_settings", return_value=settings),
             patch("talent_graph.api.main.run_write_query", new_callable=AsyncMock),
-            patch("talent_graph.api.main.init_prestige_names", new_callable=AsyncMock, return_value=True),
+            patch(
+                "talent_graph.api.main.init_prestige_names",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
             patch("talent_graph.api.main.close_driver", new_callable=AsyncMock),
             pytest.raises(RuntimeError, match="default.*production"),
         ):
@@ -78,7 +86,11 @@ class TestSecretsGuard:
         with (
             patch("talent_graph.api.main.get_settings", return_value=settings),
             patch("talent_graph.api.main.run_write_query", new_callable=AsyncMock),
-            patch("talent_graph.api.main.init_prestige_names", new_callable=AsyncMock, return_value=True),
+            patch(
+                "talent_graph.api.main.init_prestige_names",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
             patch("talent_graph.api.main.close_driver", new_callable=AsyncMock),
         ):
             from talent_graph.api.main import create_app
@@ -88,7 +100,9 @@ class TestSecretsGuard:
                 pass  # should not raise
 
     @pytest.mark.asyncio
-    async def test_development_default_secrets_warns(self, caplog: pytest.LogCaptureFixture) -> None:
+    async def test_development_default_secrets_warns(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Development mode warns but does not raise."""
         settings = _make_settings(environment="development")
 
@@ -96,7 +110,11 @@ class TestSecretsGuard:
             caplog.at_level(logging.WARNING),
             patch("talent_graph.api.main.get_settings", return_value=settings),
             patch("talent_graph.api.main.run_write_query", new_callable=AsyncMock),
-            patch("talent_graph.api.main.init_prestige_names", new_callable=AsyncMock, return_value=True),
+            patch(
+                "talent_graph.api.main.init_prestige_names",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
             patch("talent_graph.api.main.close_driver", new_callable=AsyncMock),
         ):
             from talent_graph.api.main import create_app

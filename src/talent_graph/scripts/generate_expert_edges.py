@@ -53,9 +53,7 @@ async def _load_person_concept_pairs() -> list[dict[str, object]]:
     """
     async with get_db_session() as session:
         # Get paper_id → person_id mapping
-        pa_result = await session.execute(
-            select(PaperAuthor.person_id, PaperAuthor.paper_id)
-        )
+        pa_result = await session.execute(select(PaperAuthor.person_id, PaperAuthor.paper_id))
         paper_authors = pa_result.all()
 
         if not paper_authors:

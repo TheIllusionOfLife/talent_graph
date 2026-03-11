@@ -64,11 +64,13 @@ def _compute_similar_pairs(
             key = (a, b)
             if key not in seen:
                 seen.add(key)
-                pairs.append({
-                    "person_id_a": a,
-                    "person_id_b": b,
-                    "similarity": round(float(row[int(j)]), 4),
-                })
+                pairs.append(
+                    {
+                        "person_id_a": a,
+                        "person_id_b": b,
+                        "similarity": round(float(row[int(j)]), 4),
+                    }
+                )
 
     return pairs
 

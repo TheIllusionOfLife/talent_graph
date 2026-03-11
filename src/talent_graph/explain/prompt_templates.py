@@ -47,6 +47,7 @@ def sanitize_input(text: str, max_length: int = 500) -> str:
         _log.warning("prompt_injection.suspected", snippet=text[:80])
     return text
 
+
 _SYSTEM_PROMPT = """You are an expert talent analyst. Given evidence about a researcher or engineer, \
 write a concise 2-3 sentence brief explaining why they are relevant to the search context. \
 Base your assessment strictly on the provided evidence — do not invent facts."""
