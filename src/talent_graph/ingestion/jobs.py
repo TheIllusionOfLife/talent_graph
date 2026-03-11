@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from typing import cast
 
 import structlog
 
@@ -146,6 +147,9 @@ async def ingest_github(
     Returns:
         Counts of upserted entities (repos, persons).
     """
+    if max_contributors < 1:
+        raise ValueError(f"max_contributors must be >= 1, got {max_contributors}")
+
     settings = get_settings()
     store = raw_store or RawStore()
     builder = graph_builder or GraphBuilder()
@@ -242,16 +246,25 @@ async def ingest_github(
                         )
 
             # 7. Upsert to Neo4j (pass person info so Person nodes get created)
+            #    Aggregate contributions when multiple logins resolve to the same person.
             try:
-                contributor_info = {
-                    login_to_canon_id[login]: {
-                        "contributions": contributions_by_login.get(login, 0),
-                        "name": person_records[login].name if login in person_records else "",
-                        "github_login": login,
-                    }
-                    for login in repo_record.contributor_logins
-                    if login in login_to_canon_id
-                }
+                contributor_info: dict[str, dict[str, object]] = {}
+                for login in repo_record.contributor_logins:
+                    if login not in login_to_canon_id:
+                        continue
+                    canon_id = login_to_canon_id[login]
+                    contribs = contributions_by_login.get(login, 0)
+                    if canon_id in contributor_info:
+                        existing = contributor_info[canon_id]
+                        existing["contributions"] = (
+                            cast("int", existing["contributions"]) + contribs
+                        )
+                    else:
+                        contributor_info[canon_id] = {
+                            "contributions": contribs,
+                            "name": person_records[login].name if login in person_records else "",
+                            "github_login": login,
+                        }
                 await builder.upsert_repo(repo_record, contributor_info)
             except Exception as neo4j_exc:
                 log.warning(

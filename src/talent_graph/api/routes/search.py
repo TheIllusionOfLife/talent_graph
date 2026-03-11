@@ -1,7 +1,5 @@
 """GET /search — embed query and return ANN-ranked persons."""
 
-import asyncio
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from starlette.requests import Request
@@ -15,26 +13,31 @@ from talent_graph.storage.vector_store import search_by_name, search_similar
 
 router = APIRouter(prefix="/search", tags=["search"])
 
-_NAME_MATCH_DISTANCE = 0.1  # Boosted distance for name matches (lower = more relevant)
+_NAME_MATCH_DISTANCE = 0.1  # Boosted distance for exact name matches (lower = more relevant)
 
 
 def _blend_results(
     vec_rows: list[dict],
     name_rows: list[dict],
+    query: str,
     limit: int,
 ) -> list[dict]:
     """Merge vector search and name search results, deduplicating by person ID.
 
-    Name matches get a boosted distance (_NAME_MATCH_DISTANCE) so they rank
-    higher than weak vector hits. When a person appears in both, the better
-    (lower) distance wins.
+    Exact case-insensitive name matches get a boosted distance
+    (_NAME_MATCH_DISTANCE) so they rank higher than weak vector hits.
+    Partial name matches are included but keep their original distance.
+    When a person appears in both, the better (lower) distance wins.
     """
     merged: dict[str, dict] = {}
     for row in vec_rows:
         merged[row["id"]] = row
+    query_lower = query.casefold()
     for row in name_rows:
-        boosted = {**row, "distance": _NAME_MATCH_DISTANCE}
-        if row["id"] not in merged or merged[row["id"]]["distance"] > _NAME_MATCH_DISTANCE:
+        is_exact = row["name"].casefold() == query_lower
+        boosted_distance = _NAME_MATCH_DISTANCE if is_exact else row["distance"]
+        boosted = {**row, "distance": boosted_distance}
+        if row["id"] not in merged or merged[row["id"]]["distance"] > boosted_distance:
             merged[row["id"]] = boosted
     return sorted(merged.values(), key=lambda r: r["distance"])[:limit]
 
@@ -64,12 +67,10 @@ async def search_persons(
     query_vec = await encode_one_async(query_text)
 
     async with get_db_session() as session:
-        vec_rows, name_rows = await asyncio.gather(
-            search_similar(session, query_vec, limit=limit),
-            search_by_name(session, q.strip(), limit=limit),
-        )
+        vec_rows = await search_similar(session, query_vec, limit=limit)
+        name_rows = await search_by_name(session, q.strip(), limit=limit)
 
-    rows = _blend_results(vec_rows, name_rows, limit=limit)
+    rows = _blend_results(vec_rows, name_rows, query=q.strip(), limit=limit)
 
     results = [
         SearchResult(
