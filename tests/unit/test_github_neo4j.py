@@ -132,9 +132,9 @@ class TestContributorLimit:
         user_calls: list[str] = []
         original_get_user = mock_gh.get_user.side_effect
 
-        async def tracking_get_user(login: str) -> dict:
+        async def tracking_get_user(login: str) -> dict[str, object]:
             user_calls.append(login)
-            return original_get_user(login)
+            return dict(original_get_user(login))
 
         mock_gh.get_user.side_effect = tracking_get_user
 
