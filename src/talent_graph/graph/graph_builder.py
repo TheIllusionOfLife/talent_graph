@@ -13,6 +13,7 @@ from talent_graph.graph.queries import (
     MERGE_PAPER,
     MERGE_PAPER_ABOUT_CONCEPTS_BATCH,
     MERGE_PERSONS_AND_AFFILIATED_BATCH,
+    MERGE_PERSONS_BASIC_BATCH,
     MERGE_REPO,
 )
 from talent_graph.normalize.common_schema import PaperRecord, RepoRecord
@@ -110,13 +111,14 @@ class GraphBuilder:
     async def upsert_repo(
         self,
         repo: RepoRecord,
-        contributor_person_ids: dict[str, int],
+        contributor_info: dict[str, dict[str, object]],
     ) -> None:
-        """Write a Repo node and CONTRIBUTED_TO edges to Neo4j.
+        """Write a Repo node, Person nodes, and CONTRIBUTED_TO edges to Neo4j.
 
         Args:
             repo: Normalized repo record.
-            contributor_person_ids: Mapping of canonical_person_id → contribution count.
+            contributor_info: Mapping of canonical_person_id → dict with keys:
+                contributions (int), name (str), github_login (str).
         """
         await run_write_query(
             MERGE_REPO,
@@ -130,10 +132,21 @@ class GraphBuilder:
             },
         )
 
-        if contributor_person_ids:
+        if contributor_info:
+            # MERGE Person nodes first (ensures they exist before creating edges)
+            persons_data = [
+                {
+                    "person_id": pid,
+                    "name": info.get("name", ""),
+                    "github_login": info.get("github_login"),
+                }
+                for pid, info in contributor_info.items()
+            ]
+            await run_write_query(MERGE_PERSONS_BASIC_BATCH, {"persons": persons_data})
+
             contributors_data = [
-                {"person_id": pid, "contributions": count}
-                for pid, count in contributor_person_ids.items()
+                {"person_id": pid, "contributions": info.get("contributions", 0)}
+                for pid, info in contributor_info.items()
             ]
             await run_write_query(
                 MERGE_CONTRIBUTED_TO_BATCH,

@@ -127,6 +127,7 @@ async def ingest_github(
     repos: list[str],
     raw_store: RawStore | None = None,
     graph_builder: GraphBuilder | None = None,
+    max_contributors: int = 30,
 ) -> dict[str, int]:
     """
     Full GitHub ingestion pipeline for a list of 'owner/repo' slugs:
@@ -156,6 +157,16 @@ async def ingest_github(
             # 1. Fetch raw data
             raw_repo = await gh.get_repo(owner, repo_name)
             raw_contributors = await gh.get_contributors(owner, repo_name, exclude_bots=True)
+
+            # Limit contributors to top-N by contribution count (already sorted desc)
+            if len(raw_contributors) > max_contributors:
+                log.info(
+                    "github.contributors.limited",
+                    repo=repo_slug,
+                    total=len(raw_contributors),
+                    kept=max_contributors,
+                )
+                raw_contributors = raw_contributors[:max_contributors]
 
             # Fetch user profiles for contributors (owner + contributors).
             # Skip the owner if it is a GitHub Organization — org accounts are not Person nodes.
@@ -220,14 +231,18 @@ async def ingest_github(
                             contributions=contributions_by_login.get(login, 0),
                         )
 
-            # 7. Upsert to Neo4j
+            # 7. Upsert to Neo4j (pass person info so Person nodes get created)
             try:
-                contributor_person_ids = {
-                    login_to_canon_id[login]: contributions_by_login.get(login, 0)
+                contributor_info = {
+                    login_to_canon_id[login]: {
+                        "contributions": contributions_by_login.get(login, 0),
+                        "name": person_records[login].name if login in person_records else "",
+                        "github_login": login,
+                    }
                     for login in repo_record.contributor_logins
                     if login in login_to_canon_id
                 }
-                await builder.upsert_repo(repo_record, contributor_person_ids)
+                await builder.upsert_repo(repo_record, contributor_info)
             except Exception as neo4j_exc:
                 log.warning(
                     "neo4j.repo.upsert.failed",

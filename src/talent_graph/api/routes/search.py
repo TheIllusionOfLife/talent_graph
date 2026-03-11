@@ -13,6 +13,29 @@ from talent_graph.storage.vector_store import search_by_name, search_similar
 
 router = APIRouter(prefix="/search", tags=["search"])
 
+_NAME_MATCH_DISTANCE = 0.1  # Boosted distance for name matches (lower = more relevant)
+
+
+def _blend_results(
+    vec_rows: list[dict],
+    name_rows: list[dict],
+    limit: int,
+) -> list[dict]:
+    """Merge vector search and name search results, deduplicating by person ID.
+
+    Name matches get a boosted distance (_NAME_MATCH_DISTANCE) so they rank
+    higher than weak vector hits. When a person appears in both, the better
+    (lower) distance wins.
+    """
+    merged: dict[str, dict] = {}
+    for row in vec_rows:
+        merged[row["id"]] = row
+    for row in name_rows:
+        boosted = {**row, "distance": _NAME_MATCH_DISTANCE}
+        if row["id"] not in merged or merged[row["id"]]["distance"] > _NAME_MATCH_DISTANCE:
+            merged[row["id"]] = boosted
+    return sorted(merged.values(), key=lambda r: r["distance"])[:limit]
+
 
 class SearchResult(BaseModel):
     id: str
@@ -39,12 +62,10 @@ async def search_persons(
     query_vec = await encode_one_async(query_text)
 
     async with get_db_session() as session:
-        rows = await search_similar(session, query_vec, limit=limit)
+        vec_rows = await search_similar(session, query_vec, limit=limit)
+        name_rows = await search_by_name(session, q, limit=limit)
 
-        # Fall back to name search when vector search returns nothing
-        # (e.g. no embeddings generated yet, or query is a person name)
-        if not rows:
-            rows = await search_by_name(session, q.strip(), limit=limit)
+    rows = _blend_results(vec_rows, name_rows, limit=limit)
 
     results = [
         SearchResult(
