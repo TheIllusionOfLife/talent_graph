@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { addToShortlist, listShortlists } from "@/lib/api";
 import type { ShortlistSummary } from "@/types";
 
@@ -15,6 +15,28 @@ export function AddToShortlistButton({ personId }: AddToShortlistButtonProps) {
 	const [adding, setAdding] = useState<string | null>(null);
 	const [added, setAdded] = useState<string | null>(null);
 	const [addError, setAddError] = useState<string | null>(null);
+	const dropdownRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!showDropdown) return;
+		function handleClickOutside(e: MouseEvent) {
+			if (
+				dropdownRef.current &&
+				!dropdownRef.current.contains(e.target as Node)
+			) {
+				setShowDropdown(false);
+			}
+		}
+		function handleEscape(e: KeyboardEvent) {
+			if (e.key === "Escape") setShowDropdown(false);
+		}
+		document.addEventListener("mousedown", handleClickOutside);
+		document.addEventListener("keydown", handleEscape);
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+			document.removeEventListener("keydown", handleEscape);
+		};
+	}, [showDropdown]);
 
 	async function handleOpenDropdown() {
 		if (!shortlists) {
@@ -25,7 +47,6 @@ export function AddToShortlistButton({ personId }: AddToShortlistButtonProps) {
 				setAddError(
 					e instanceof Error ? e.message : "Failed to load shortlists",
 				);
-				setShortlists([]);
 			}
 		}
 		setShowDropdown((v) => !v);
@@ -46,10 +67,12 @@ export function AddToShortlistButton({ personId }: AddToShortlistButtonProps) {
 	}
 
 	return (
-		<div className="relative">
+		<div className="relative" ref={dropdownRef}>
 			<button
 				type="button"
 				onClick={handleOpenDropdown}
+				aria-haspopup="menu"
+				aria-expanded={showDropdown}
 				className="text-xs px-2 py-1 border border-gray-200 rounded hover:bg-gray-50 text-gray-600"
 				title="Add to shortlist"
 			>

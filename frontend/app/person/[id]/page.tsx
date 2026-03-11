@@ -107,7 +107,7 @@ export default async function PersonPage({
 								ORCID: {person.orcid}
 							</a>
 						)}
-						{person.homepage && (
+						{person.homepage && /^https?:\/\//i.test(person.homepage) && (
 							<a
 								href={person.homepage}
 								target="_blank"

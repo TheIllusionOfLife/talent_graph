@@ -26,8 +26,9 @@ from talent_graph.graph.neo4j_client import close_driver, run_write_query
 from talent_graph.graph.queries import CONSTRAINTS
 
 
-async def _rate_limit_handler(request: StarletteRequest, exc: RateLimitExceeded) -> JSONResponse:
-    retry_after = str(exc.retry_after) if hasattr(exc, "retry_after") else "60"
+async def _rate_limit_handler(_request: StarletteRequest, exc: RateLimitExceeded) -> JSONResponse:
+    raw = getattr(exc, "retry_after", None)
+    retry_after = str(raw) if raw else "60"
     return JSONResponse(
         {"detail": f"Rate limit exceeded: {exc.detail}"},
         status_code=429,

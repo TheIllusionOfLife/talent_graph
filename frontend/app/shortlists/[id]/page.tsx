@@ -100,6 +100,10 @@ export default function ShortlistDetailPage() {
 		}
 	}
 
+	function sanitizeFilename(name: string) {
+		return name.replace(/[/\\:*?"<>|\n\r]/g, "_").trim() || "shortlist";
+	}
+
 	function handleExport(format: "csv" | "json") {
 		if (!shortlist) return;
 		let content: string;
@@ -120,11 +124,11 @@ export default function ShortlistDetailPage() {
 				});
 			content = [header, ...rows].join("\n");
 			mimeType = "text/csv";
-			filename = `${shortlist.name}.csv`;
+			filename = `${sanitizeFilename(shortlist.name)}.csv`;
 		} else {
 			content = JSON.stringify(shortlist, null, 2);
 			mimeType = "application/json";
-			filename = `${shortlist.name}.json`;
+			filename = `${sanitizeFilename(shortlist.name)}.json`;
 		}
 
 		const blob = new Blob([content], { type: mimeType });
