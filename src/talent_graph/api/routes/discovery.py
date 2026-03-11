@@ -230,7 +230,7 @@ async def discover_candidates(
         years_active = max(1, now - first_year + 1)
 
         # Semantic similarity: use candidate's stored embedding vs query_vec
-        if person.embedding:
+        if person.embedding is not None:
             dot = sum(a * b for a, b in zip(person.embedding, query_vec, strict=True))
             sem_sim = max(0.0, min(1.0, (dot + 1.0) / 2.0))
         else:

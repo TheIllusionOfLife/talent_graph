@@ -95,6 +95,8 @@ help:
 	@echo "  make migrate       - Run Alembic migrations"
 	@echo "  make seed          - Ingest sample data (OpenAlex + GitHub)"
 	@echo "  make refresh       - Re-run ingestion to pick up new data"
+	@echo "  make embed         - Generate person embeddings"
+	@echo "  make generate-edges - Generate SIMILAR_TO + LIKELY_EXPERT_IN edges"
 	@echo "  make eval          - Run offline evaluation (precision@k, MRR)"
 	@echo "  make api           - Start FastAPI dev server (port 8000)"
 	@echo "  make frontend      - Start Next.js dev server (port 3000)"

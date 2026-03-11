@@ -148,6 +148,14 @@ SET r.github_repo_id = $github_repo_id,
 RETURN r.full_name AS full_name
 """
 
+MERGE_PERSONS_BASIC_BATCH = """
+UNWIND $persons AS p
+MERGE (person:Person {person_id: p.person_id})
+ON CREATE SET person.name = p.name
+SET person.github_login = p.github_login,
+    person.updated_at = timestamp()
+"""
+
 MERGE_CONTRIBUTED_TO_BATCH = """
 UNWIND $contributors AS c
 MATCH (person:Person {person_id: c.person_id})

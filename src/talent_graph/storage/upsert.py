@@ -1,9 +1,11 @@
 """SQLAlchemy upsert helpers (ON CONFLICT DO UPDATE — idempotent)."""
 
+import logging
 from typing import cast
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from talent_graph.normalize.common_schema import (
@@ -24,6 +26,8 @@ from talent_graph.storage.models import (
     Repo,
     RepoContributor,
 )
+
+log = logging.getLogger(__name__)
 
 
 async def upsert_org(session: AsyncSession, org: OrgRecord) -> str:
@@ -93,8 +97,50 @@ async def upsert_person(session: AsyncSession, person: PersonRecord) -> str:
         )
         .returning(Person.id)
     )
-    result = await session.execute(stmt)
-    return cast("str", result.scalar_one())
+    # Use savepoint so a unique-constraint failure doesn't abort the outer tx.
+    try:
+        async with session.begin_nested():
+            result = await session.execute(stmt)
+            return cast("str", result.scalar_one())
+    except IntegrityError as exc:
+        pgcode = getattr(exc.orig, "pgcode", None)
+        if pgcode != "23505":  # only handle unique_violation
+            raise
+        log.warning(
+            "upsert_person.unique_conflict: person_id=%s name=%s orcid=%s",
+            person.canonical_person_id,
+            person.name,
+            person.orcid,
+        )
+        # Retry without orcid (the most common conflicting unique field)
+        stmt_retry = (
+            insert(Person)
+            .values(
+                id=person.canonical_person_id,
+                name=person.name,
+                openalex_author_id=person.openalex_author_id,
+                github_login=person.github_login,
+                orcid=None,
+                email=person.email,
+                homepage=person.homepage,
+                org_id=org_id,
+            )
+            .on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                    "name": person.name,
+                    "openalex_author_id": person.openalex_author_id,
+                    "github_login": person.github_login,
+                    "email": person.email,
+                    "homepage": person.homepage,
+                    "org_id": org_id,
+                    "updated_at": func.now(),
+                },
+            )
+            .returning(Person.id)
+        )
+        result = await session.execute(stmt_retry)
+        return cast("str", result.scalar_one())
 
 
 async def upsert_concept(session: AsyncSession, concept: ConceptRecord) -> str:

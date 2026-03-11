@@ -41,10 +41,14 @@ def _parse_authorship(authorship: dict, position: int) -> AuthorPosition:
     institutions = authorship.get("institutions") or []
     org = _parse_institution(institutions[0]) if institutions else None
 
+    raw_orcid = author_raw.get("orcid")
+    # Filter out bare ORCID prefix with no actual ID (e.g. "https://orcid.org/")
+    orcid = raw_orcid if raw_orcid and raw_orcid.rstrip("/") != "https://orcid.org" else None
+
     person = PersonRecord(
         name=author_raw.get("display_name", ""),
         openalex_author_id=_strip_openalex_prefix(author_raw.get("id")),
-        orcid=author_raw.get("orcid"),
+        orcid=orcid,
         org=org,
     )
     return AuthorPosition(
