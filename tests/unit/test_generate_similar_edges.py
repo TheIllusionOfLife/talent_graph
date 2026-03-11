@@ -1,7 +1,6 @@
 """Tests for SIMILAR_TO edge generation — cosine similarity, top-K filtering."""
 
 import numpy as np
-import pytest
 
 
 class TestCosineSimilarityPairs:

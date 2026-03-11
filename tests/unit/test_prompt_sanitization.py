@@ -1,7 +1,5 @@
 """Tests for LLM prompt injection hardening — sanitize_input()."""
 
-import pytest
-
 
 class TestSanitizeInput:
     """Test the sanitize_input() function in prompt_templates."""

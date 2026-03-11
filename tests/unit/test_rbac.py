@@ -4,7 +4,6 @@ import pytest
 
 from talent_graph.api.auth import require_admin_key, require_any_api_key, require_user_key
 
-
 ADMIN_KEY = "test-admin-key"
 RANDOM_USER_KEY = "some-random-user-key"
 

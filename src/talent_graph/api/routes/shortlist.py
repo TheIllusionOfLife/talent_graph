@@ -16,7 +16,7 @@ from starlette.requests import Request  # noqa: TC002
 from talent_graph.api.auth import owner_hash, require_any_api_key
 from talent_graph.api.limiter import limiter
 from talent_graph.storage.id_gen import new_id
-from talent_graph.storage.models import Person, Shortlist, ShortlistItem
+from talent_graph.storage.models import Person, RankingSignal, Shortlist, ShortlistItem
 from talent_graph.storage.postgres import get_db_session
 
 log = structlog.get_logger()
@@ -224,6 +224,17 @@ async def add_item(
                 raise HTTPException(status_code=409, detail="Person already in shortlist") from exc
             raise
 
+        # Record ranking signal (same transaction)
+        signal = RankingSignal(
+            id=f"rs_{new_id()}",
+            person_id=body.person_id,
+            query="",
+            action="save",
+            context={"shortlist_id": shortlist_id},
+            owner_key=owner_hash(current_key),
+        )
+        session.add(signal)
+
         return _item_to_out(item)
 
 
@@ -297,6 +308,17 @@ async def remove_item(
         if item is None:
             raise HTTPException(status_code=404, detail="Item not found in shortlist")
         await session.delete(item)
+
+        # Record ranking signal (same transaction)
+        signal = RankingSignal(
+            id=f"rs_{new_id()}",
+            person_id=person_id,
+            query="",
+            action="discard",
+            context={"shortlist_id": shortlist_id},
+            owner_key=owner_hash(current_key),
+        )
+        session.add(signal)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

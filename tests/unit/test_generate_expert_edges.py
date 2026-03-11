@@ -1,7 +1,5 @@
 """Tests for LIKELY_EXPERT_IN edge generation — concept frequency, threshold filtering."""
 
-import pytest
-
 
 class TestConceptFrequencyCounting:
     """Test the _count_person_concepts helper."""
