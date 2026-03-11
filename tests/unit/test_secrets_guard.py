@@ -1,6 +1,6 @@
 """Tests for production secrets guard — fail-fast when defaults are used."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -102,9 +102,7 @@ class TestSecretsGuard:
     async def test_development_default_secrets_warns(self) -> None:
         """Development mode warns but does not raise."""
         settings = _make_settings(environment="development")
-        mock_log = AsyncMock()
-        mock_log.info = AsyncMock()
-        mock_log.warning = AsyncMock()
+        mock_log = MagicMock()
 
         with (
             patch("talent_graph.api.main.get_settings", return_value=settings),

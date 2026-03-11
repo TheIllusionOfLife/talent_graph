@@ -54,7 +54,11 @@ class Settings(BaseSettings):
     @field_validator("environment", mode="before")
     @classmethod
     def _normalize_environment(cls, v: str) -> str:
-        return v.strip().lower()
+        normalized = v.strip().lower()
+        allowed = {"development", "staging", "production"}
+        if normalized not in allowed:
+            raise ValueError(f"Invalid environment {v!r}; must be one of {sorted(allowed)}")
+        return normalized
 
     # Logging
     log_level: str = Field(default="INFO")

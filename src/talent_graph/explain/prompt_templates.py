@@ -21,7 +21,7 @@ _INSTRUCTION_RE = re.compile(
 PROMPT_VERSION = "v1"
 
 
-def sanitize_input(text: str, max_length: int = 500) -> str:
+def sanitize_input(text: str | None, max_length: int = 500) -> str:
     """Sanitize user-provided text before embedding in LLM prompts.
 
     Steps:
@@ -32,6 +32,8 @@ def sanitize_input(text: str, max_length: int = 500) -> str:
     5. Truncate to max_length
     6. Warn-log if instruction patterns detected (telemetry only)
     """
+    if text is None:
+        return ""
     # 1. NFKC normalization
     text = unicodedata.normalize("NFKC", text)
     # 2. Strip tags
@@ -112,8 +114,9 @@ def build_brief_prompt(
         paper_lines = "  (none)"
 
     org = getattr(person, "org", None)
-    safe_org_name = sanitize_input(org.name, max_length=200) if org else ""
-    org_line = f"Affiliation: {safe_org_name}\n" if org else ""
+    org_name = getattr(org, "name", None) if org else None
+    safe_org_name = sanitize_input(org_name, max_length=200) if org_name else ""
+    org_line = f"Affiliation: {safe_org_name}\n" if safe_org_name else ""
 
     safe_seed_text = sanitize_input(seed_text)
     safe_name = sanitize_input(person.name, max_length=200)
@@ -161,7 +164,8 @@ def render_template_fallback(
     """
     papers = getattr(person, "papers", []) or []
     org = getattr(person, "org", None)
-    org_phrase = f" affiliated with {sanitize_input(org.name, max_length=200)}" if org else ""
+    org_name = getattr(org, "name", None) if org else None
+    org_phrase = f" affiliated with {sanitize_input(org_name, max_length=200)}" if org_name else ""
 
     seed_context = ""
     if seed_text:
