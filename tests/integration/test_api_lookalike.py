@@ -26,6 +26,29 @@ class TestLookalikeNotFound:
         assert response.status_code == 404
 
 
+class TestLookalikeServiceError:
+    async def test_search_service_unavailable(
+        self,
+        api_client: AsyncClient,
+        db_session_factory: async_sessionmaker,
+    ) -> None:
+        person = PersonFactory.build(name="Dave Error", embedding=[0.1] * 384)
+        async with db_session_factory() as session:
+            session.add(person)
+            await session.commit()
+            person_id = person.id
+
+        with patch(
+            "talent_graph.api.routes.lookalike.search_similar",
+            new_callable=AsyncMock,
+            side_effect=Exception("boom"),
+        ):
+            response = await api_client.get(f"/lookalike/{person_id}")
+
+        assert response.status_code == 503
+        assert "Vector search unavailable" in response.json()["detail"]
+
+
 class TestLookalikeSuccess:
     async def test_person_no_embedding(
         self,

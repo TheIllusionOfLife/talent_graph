@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { fetchEgoGraph } from "@/lib/api";
 import type { EgoGraphResponse } from "@/types";
 import { GraphLegend } from "./GraphLegend";
 
@@ -21,6 +20,21 @@ function escapeHtml(str: string): string {
 		.replace(/>/g, "&gt;")
 		.replace(/"/g, "&quot;")
 		.replace(/'/g, "&#039;");
+}
+
+async function fetchSubgraph(
+	nodeType: string,
+	nodeId: string,
+	hops: number,
+): Promise<EgoGraphResponse> {
+	const params = new URLSearchParams({ hops: String(hops) });
+	const res = await fetch(
+		`/api/graph/ego/${encodeURIComponent(nodeType)}/${encodeURIComponent(nodeId)}?${params}`,
+	);
+	if (!res.ok) {
+		throw new Error(`API ${res.status}`);
+	}
+	return res.json() as Promise<EgoGraphResponse>;
 }
 
 const NODE_COLORS: Record<string, string> = {
@@ -99,6 +113,7 @@ export function ForceGraph({ initialData }: ForceGraphProps) {
 	const expandedIds = useRef(new Set<string>());
 	const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const lastClickedNodeId = useRef<string | null>(null);
+	const expansionVersion = useRef(0);
 
 	const initialForceData = useMemo(() => {
 		const nodes: ForceNode[] = initialData.nodes.map((n) => ({
@@ -160,9 +175,12 @@ export function ForceGraph({ initialData }: ForceGraphProps) {
 				if (nodeType !== "person") return;
 
 				expandedIds.current.add(node.id);
+				const version = expansionVersion.current;
 				setLoading(true);
 				try {
-					const subgraph = await fetchEgoGraph(nodeType, nodeId, 1);
+					const subgraph = await fetchSubgraph(nodeType, nodeId, 1);
+					// Discard result if reset happened during fetch
+					if (expansionVersion.current !== version) return;
 					setGraphData((prev) => {
 						const merged = mergeGraphData(
 							prev,
@@ -175,7 +193,9 @@ export function ForceGraph({ initialData }: ForceGraphProps) {
 				} catch {
 					expandedIds.current.delete(node.id);
 				} finally {
-					setLoading(false);
+					if (expansionVersion.current === version) {
+						setLoading(false);
+					}
 				}
 			}, 250);
 		},
@@ -188,7 +208,9 @@ export function ForceGraph({ initialData }: ForceGraphProps) {
 			clickTimer.current = null;
 		}
 		lastClickedNodeId.current = null;
+		expansionVersion.current += 1;
 		expandedIds.current.clear();
+		setLoading(false);
 		setGraphData(initialForceData);
 		setTruncated(initialData.truncated);
 	}, [initialForceData, initialData.truncated]);
@@ -228,8 +250,9 @@ export function ForceGraph({ initialData }: ForceGraphProps) {
 		const meta = n.metadata;
 		const parts = [escapeHtml(n.label), `Type: ${escapeHtml(n.type)}`];
 		if (meta.citation_count != null)
-			parts.push(`Citations: ${meta.citation_count}`);
-		if (meta.stars != null) parts.push(`Stars: ${meta.stars}`);
+			parts.push(`Citations: ${escapeHtml(String(meta.citation_count))}`);
+		if (meta.stars != null)
+			parts.push(`Stars: ${escapeHtml(String(meta.stars))}`);
 		if (meta.name && meta.name !== n.label)
 			parts.push(`Name: ${escapeHtml(String(meta.name))}`);
 		return parts.join("\n");
