@@ -109,6 +109,20 @@ jobs:
       - name: Build
         run: bun run build
 
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+        continue-on-error: true
+
   playwright:
     runs-on: ubuntu-latest
     defaults:
