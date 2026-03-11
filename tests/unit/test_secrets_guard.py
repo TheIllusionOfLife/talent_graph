@@ -8,9 +8,9 @@ import pytest
 from talent_graph.config.settings import Settings
 
 
-def _make_settings(**overrides: object) -> Settings:
+def _make_settings(**overrides: str) -> Settings:
     """Build a Settings instance with sensible test defaults + overrides."""
-    defaults = {
+    defaults: dict[str, str] = {
         "database_url": "postgresql+asyncpg://x:x@localhost/x",
         "neo4j_uri": "bolt://localhost:7687",
         "neo4j_user": "neo4j",

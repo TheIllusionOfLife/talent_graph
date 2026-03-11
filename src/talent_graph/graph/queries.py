@@ -156,3 +156,25 @@ MERGE (person)-[r:CONTRIBUTED_TO]->(repo)
 SET r.contributions = c.contributions,
     r.updated_at = timestamp()
 """
+
+# ─── Inferred edge upserts ───────────────────────────────────────────────────
+
+MERGE_SIMILAR_TO_BATCH = """
+UNWIND $pairs AS p
+MATCH (a:Person {person_id: p.person_id_a})
+MATCH (b:Person {person_id: p.person_id_b})
+MERGE (a)-[r:SIMILAR_TO]->(b)
+SET r.similarity = p.similarity,
+    r.source = 'inferred',
+    r.updated_at = timestamp()
+"""
+
+MERGE_LIKELY_EXPERT_IN_BATCH = """
+UNWIND $edges AS e
+MATCH (person:Person {person_id: e.person_id})
+MATCH (concept:Concept {openalex_concept_id: e.concept_id})
+MERGE (person)-[r:LIKELY_EXPERT_IN]->(concept)
+SET r.paper_count = e.paper_count,
+    r.source = 'inferred',
+    r.updated_at = timestamp()
+"""
