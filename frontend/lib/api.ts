@@ -12,6 +12,7 @@ import type {
 	SavedSearchOut,
 	SearchResponse,
 	ShortlistItemOut,
+	ShortlistItemUpdate,
 	ShortlistOut,
 	ShortlistSummary,
 } from "@/types";
@@ -110,6 +111,17 @@ export async function addToShortlist(
 		method: "POST",
 		body: JSON.stringify({ person_id: personId, note }),
 	});
+}
+
+export async function updateShortlistItem(
+	shortlistId: string,
+	personId: string,
+	body: ShortlistItemUpdate,
+): Promise<ShortlistItemOut> {
+	return apiFetch<ShortlistItemOut>(
+		`/shortlists/${shortlistId}/items/${personId}`,
+		{ method: "PATCH", body: JSON.stringify(body) },
+	);
 }
 
 export async function removeFromShortlist(

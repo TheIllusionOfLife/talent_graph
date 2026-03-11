@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AddToShortlistButton } from "@/components/AddToShortlistButton";
 import { PersonBrief } from "@/components/PersonBrief";
 import { getPerson } from "@/lib/api";
 import type { PersonDetail } from "@/types";
@@ -64,17 +65,58 @@ export default async function PersonPage({
 								</p>
 							)}
 						</div>
-						<Link
-							href={`/discovery/person/${person.id}`}
-							className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700"
-						>
-							Discover similar
-						</Link>
+						<div className="flex items-center gap-2">
+							<AddToShortlistButton personId={person.id} />
+							<Link
+								href={`/discovery/person/${person.id}`}
+								className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700"
+							>
+								Discover similar
+							</Link>
+						</div>
 					</div>
 
 					<div className="flex flex-wrap gap-3 mt-4 text-sm text-gray-500">
-						{person.github_login && <span>GitHub: @{person.github_login}</span>}
-						{person.orcid && <span>ORCID: {person.orcid}</span>}
+						{person.github_login && (
+							<a
+								href={`https://github.com/${person.github_login}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-blue-500 hover:underline"
+							>
+								GitHub: @{person.github_login}
+							</a>
+						)}
+						{person.openalex_author_id && (
+							<a
+								href={`https://openalex.org/authors/${person.openalex_author_id}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-blue-500 hover:underline"
+							>
+								OpenAlex: {person.openalex_author_id}
+							</a>
+						)}
+						{person.orcid && (
+							<a
+								href={`https://orcid.org/${person.orcid}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-blue-500 hover:underline"
+							>
+								ORCID: {person.orcid}
+							</a>
+						)}
+						{person.homepage && (
+							<a
+								href={person.homepage}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-blue-500 hover:underline"
+							>
+								Homepage
+							</a>
+						)}
 						{person.email && <span>{person.email}</span>}
 						{person.hidden_expert_score !== null && (
 							<span className="text-purple-600 font-medium">

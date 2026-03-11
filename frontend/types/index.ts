@@ -111,6 +111,11 @@ export interface ShortlistOut {
 	items: ShortlistItemOut[];
 }
 
+export interface ShortlistItemUpdate {
+	note?: string | null;
+	position?: number | null;
+}
+
 export interface ShortlistSummary {
 	id: string;
 	name: string;

@@ -36,6 +36,11 @@ class ShortlistItemCreate(BaseModel):
     note: str | None = None
 
 
+class ShortlistItemUpdate(BaseModel):
+    note: str | None = None
+    position: int | None = Field(default=None, ge=0)
+
+
 class PersonSummary(BaseModel):
     id: str
     name: str
@@ -219,18 +224,48 @@ async def add_item(
                 raise HTTPException(status_code=409, detail="Person already in shortlist") from exc
             raise
 
-        return ShortlistItemOut(
-            person_id=item.person_id,
-            note=item.note,
-            position=item.position,
-            added_at=item.added_at,
-            person=PersonSummary(
-                id=person.id,
-                name=person.name,
-                openalex_author_id=person.openalex_author_id,
-                github_login=person.github_login,
-            ),
+        return _item_to_out(item)
+
+
+@router.patch("/{shortlist_id}/items/{person_id}", response_model=ShortlistItemOut)
+@limiter.limit("60/minute")
+async def patch_item(
+    request: Request,
+    shortlist_id: str,
+    person_id: str,
+    body: ShortlistItemUpdate,
+    current_key: str = Depends(require_any_api_key),
+) -> ShortlistItemOut:
+    """Update note and/or position of a shortlist item."""
+    async with get_db_session() as session:
+        sl_result = await session.execute(
+            select(Shortlist).where(
+                Shortlist.id == shortlist_id,
+                Shortlist.owner_key == owner_hash(current_key),
+            )
         )
+        if sl_result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="Shortlist not found")
+
+        item_result = await session.execute(
+            select(ShortlistItem)
+            .options(selectinload(ShortlistItem.person))
+            .where(
+                ShortlistItem.shortlist_id == shortlist_id,
+                ShortlistItem.person_id == person_id,
+            )
+        )
+        item = item_result.scalar_one_or_none()
+        if item is None:
+            raise HTTPException(status_code=404, detail="Item not found in shortlist")
+
+        update_data = body.model_dump(exclude_unset=True)
+        if update_data.get("position") is None:
+            update_data.pop("position", None)
+        for field, value in update_data.items():
+            setattr(item, field, value)
+        await session.flush()
+        return _item_to_out(item)
 
 
 @router.delete("/{shortlist_id}/items/{person_id}", status_code=204)
@@ -267,32 +302,31 @@ async def remove_item(
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-def _shortlist_to_out(sl: Shortlist) -> ShortlistOut:
-    items = []
-    for item in sl.items or []:
-        person_summary = None
-        if hasattr(item, "person") and item.person:
-            p = item.person
-            person_summary = PersonSummary(
-                id=p.id,
-                name=p.name,
-                openalex_author_id=p.openalex_author_id,
-                github_login=p.github_login,
-            )
-        items.append(
-            ShortlistItemOut(
-                person_id=item.person_id,
-                note=item.note,
-                position=item.position,
-                added_at=item.added_at,
-                person=person_summary,
-            )
+def _item_to_out(item: ShortlistItem) -> ShortlistItemOut:
+    person_summary = None
+    if hasattr(item, "person") and item.person:
+        p = item.person
+        person_summary = PersonSummary(
+            id=p.id,
+            name=p.name,
+            openalex_author_id=p.openalex_author_id,
+            github_login=p.github_login,
         )
+    return ShortlistItemOut(
+        person_id=item.person_id,
+        note=item.note,
+        position=item.position,
+        added_at=item.added_at,
+        person=person_summary,
+    )
+
+
+def _shortlist_to_out(sl: Shortlist) -> ShortlistOut:
     return ShortlistOut(
         id=sl.id,
         name=sl.name,
         description=sl.description,
         created_at=sl.created_at,
         updated_at=sl.updated_at,
-        items=items,
+        items=[_item_to_out(item) for item in sl.items or []],
     )

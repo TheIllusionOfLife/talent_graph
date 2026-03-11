@@ -1,7 +1,10 @@
 """Shared fixtures for integration tests."""
 
+import os
 from collections.abc import AsyncIterator
 from unittest.mock import AsyncMock, patch
+
+os.environ.setdefault("RATE_LIMIT_STORAGE_URI", "memory://")
 
 import pytest
 import pytest_asyncio

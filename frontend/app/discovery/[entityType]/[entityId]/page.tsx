@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CandidateCard } from "@/components/CandidateCard";
+import { DiscoveryResults } from "@/components/DiscoveryResults";
 import { discoverCandidates } from "@/lib/api";
 import type { DiscoveryResponse, RankMode } from "@/types";
 
@@ -82,15 +82,10 @@ export default async function DiscoveryPage({
 				)}
 
 				{data && data.candidates.length > 0 && (
-					<div className="space-y-3">
-						{data.candidates.map((candidate) => (
-							<CandidateCard
-								key={candidate.id}
-								candidate={candidate}
-								seedText={seedText}
-							/>
-						))}
-					</div>
+					<DiscoveryResults
+						candidates={data.candidates}
+						seedText={seedText ?? entityId}
+					/>
 				)}
 			</div>
 		</main>
