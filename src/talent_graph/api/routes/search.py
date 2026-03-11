@@ -1,5 +1,7 @@
 """GET /search — embed query and return ANN-ranked persons."""
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from starlette.requests import Request
@@ -40,7 +42,7 @@ def _blend_results(
 class SearchResult(BaseModel):
     id: str
     name: str
-    score: float  # cosine similarity (1 - distance)
+    score: float  # relevance score (1 - distance); name matches use boosted distance
 
 
 class SearchResponse(BaseModel):
@@ -62,8 +64,10 @@ async def search_persons(
     query_vec = await encode_one_async(query_text)
 
     async with get_db_session() as session:
-        vec_rows = await search_similar(session, query_vec, limit=limit)
-        name_rows = await search_by_name(session, q, limit=limit)
+        vec_rows, name_rows = await asyncio.gather(
+            search_similar(session, query_vec, limit=limit),
+            search_by_name(session, q.strip(), limit=limit),
+        )
 
     rows = _blend_results(vec_rows, name_rows, limit=limit)
 

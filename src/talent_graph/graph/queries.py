@@ -151,8 +151,8 @@ RETURN r.full_name AS full_name
 MERGE_PERSONS_BASIC_BATCH = """
 UNWIND $persons AS p
 MERGE (person:Person {person_id: p.person_id})
-SET person.name = p.name,
-    person.github_login = p.github_login,
+ON CREATE SET person.name = p.name
+SET person.github_login = p.github_login,
     person.updated_at = timestamp()
 """
 

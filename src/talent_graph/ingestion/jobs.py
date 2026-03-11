@@ -129,12 +129,22 @@ async def ingest_github(
     graph_builder: GraphBuilder | None = None,
     max_contributors: int = 30,
 ) -> dict[str, int]:
-    """
-    Full GitHub ingestion pipeline for a list of 'owner/repo' slugs:
-      fetch → save raw → normalize → resolve → upsert postgres → upsert neo4j
+    """Full GitHub ingestion pipeline for a list of 'owner/repo' slugs.
+
+    Pipeline: fetch → save raw → normalize → resolve → upsert postgres → upsert neo4j.
 
     Entity resolution runs BEFORE any upsert to prevent duplicate Person nodes.
-    Returns counts of upserted entities.
+
+    Args:
+        repos: List of 'owner/repo' slugs to ingest.
+        raw_store: Optional raw JSON store (default: new RawStore).
+        graph_builder: Optional Neo4j graph builder (default: new GraphBuilder).
+        max_contributors: Maximum contributors per repo (default 30). Contributors
+            are already sorted by contribution count from the GitHub API; only the
+            top N are kept to prevent noise from low-activity contributors.
+
+    Returns:
+        Counts of upserted entities (repos, persons).
     """
     settings = get_settings()
     store = raw_store or RawStore()
