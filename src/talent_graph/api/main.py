@@ -16,6 +16,8 @@ from starlette.requests import Request as StarletteRequest
 from talent_graph.api.limiter import limiter
 from talent_graph.api.routes import admin, health
 from talent_graph.api.routes.discovery import router as discovery_router
+from talent_graph.api.routes.graph import router as graph_router
+from talent_graph.api.routes.lookalike import router as lookalike_router
 from talent_graph.api.routes.person import router as person_router
 from talent_graph.api.routes.search import router as search_router
 from talent_graph.api.routes.searches import router as searches_router
@@ -119,6 +121,8 @@ def create_app() -> FastAPI:
     app.include_router(search_router)
     app.include_router(person_router)
     app.include_router(discovery_router)
+    app.include_router(graph_router)
+    app.include_router(lookalike_router)
     app.include_router(shortlist_router)
     app.include_router(searches_router)
 

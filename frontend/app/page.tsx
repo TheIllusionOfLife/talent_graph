@@ -25,10 +25,16 @@ export default async function Home({ searchParams }: HomeProps) {
 	const query = q?.trim() ?? "";
 
 	return (
-		<main className="min-h-screen bg-gray-50 flex flex-col items-center pt-24 px-4">
-			<h1 className="text-3xl font-bold text-gray-900 mb-2">Talent Graph</h1>
-			<p className="text-gray-500 text-sm mb-8">
-				Discover hidden experts using knowledge graphs and embeddings
+		<main className="min-h-screen bg-gray-50 flex flex-col items-center pt-20 px-4">
+			<h1 className="text-4xl font-extrabold text-gray-900 mb-3 tracking-tight">
+				Talent Graph
+			</h1>
+			<p className="text-gray-600 text-base mb-2 max-w-lg text-center">
+				Find exceptional people who don't appear in traditional searches.
+			</p>
+			<p className="text-gray-400 text-sm mb-8 max-w-md text-center">
+				Explore research networks, coauthor chains, and shared organizations to
+				discover hidden experts and emerging talent.
 			</p>
 
 			<SearchBar initialQuery={query} />

@@ -158,3 +158,38 @@ export interface SavedSearchOut {
 	created_at: string;
 	last_run_at: string | null;
 }
+
+// ── Graph visualization ──────────────────────────────────────────────────
+
+export interface GraphNode {
+	id: string; // compound: "person__abc123"
+	type: string; // "Person", "Paper", "Repo", "Concept", "Org"
+	label: string;
+	metadata: Record<string, unknown>;
+}
+
+export interface GraphLink {
+	source: string; // GraphNode.id
+	target: string;
+	type: string; // "AUTHORED", "ABOUT", etc.
+}
+
+export interface EgoGraphResponse {
+	center_id: string;
+	nodes: GraphNode[];
+	links: GraphLink[];
+	truncated: boolean;
+}
+
+// ── Lookalike discovery ──────────────────────────────────────────────────
+
+export interface LookalikeResult {
+	id: string;
+	name: string;
+	similarity: number;
+}
+
+export interface LookalikeResponse {
+	person_id: string;
+	results: LookalikeResult[];
+}
