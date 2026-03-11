@@ -159,3 +159,6 @@ class TestEgoGraphSuccess:
 
         assert response.status_code == 200
         mock_query.assert_called_once()
+        # Verify hops=3 was interpolated into the Cypher query
+        query_str = mock_query.call_args[0][0]
+        assert "[*1..3]" in query_str

@@ -192,7 +192,7 @@ export async function fetchEgoGraph(
 ): Promise<EgoGraphResponse> {
 	const params = new URLSearchParams({ hops: String(hops) });
 	return apiFetch<EgoGraphResponse>(
-		`/graph/ego/${nodeType}/${nodeId}?${params}`,
+		`/graph/ego/${encodeURIComponent(nodeType)}/${encodeURIComponent(nodeId)}?${params}`,
 	);
 }
 
@@ -203,5 +203,7 @@ export async function fetchLookalikes(
 	limit = 10,
 ): Promise<LookalikeResponse> {
 	const params = new URLSearchParams({ limit: String(limit) });
-	return apiFetch<LookalikeResponse>(`/lookalike/${personId}?${params}`);
+	return apiFetch<LookalikeResponse>(
+		`/lookalike/${encodeURIComponent(personId)}?${params}`,
+	);
 }

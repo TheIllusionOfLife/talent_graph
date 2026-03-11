@@ -47,14 +47,16 @@ export default async function GraphPage({
 					<Link href="/" className="text-blue-600 hover:underline text-sm">
 						← Search
 					</Link>
-					<span className="text-gray-400">/</span>
 					{nodeType === "person" && (
-						<Link
-							href={`/person/${nodeId}`}
-							className="text-blue-600 hover:underline text-sm"
-						>
-							Person Detail
-						</Link>
+						<>
+							<span className="text-gray-400">/</span>
+							<Link
+								href={`/person/${nodeId}`}
+								className="text-blue-600 hover:underline text-sm"
+							>
+								Person Detail
+							</Link>
+						</>
 					)}
 					<span className="text-gray-400">/</span>
 					<span className="text-sm text-gray-600">Graph</span>

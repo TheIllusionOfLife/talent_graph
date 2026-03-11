@@ -14,6 +14,15 @@ const ForceGraph3D = dynamic(() => import("react-force-graph-3d"), {
 	ssr: false,
 });
 
+function escapeHtml(str: string): string {
+	return str
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#039;");
+}
+
 const NODE_COLORS: Record<string, string> = {
 	Person: "#3b82f6",
 	Paper: "#22c55e",
@@ -89,6 +98,7 @@ export function ForceGraph({ initialData }: ForceGraphProps) {
 	const [loading, setLoading] = useState(false);
 	const expandedIds = useRef(new Set<string>());
 	const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const lastClickedNodeId = useRef<string | null>(null);
 
 	const initialForceData = useMemo(() => {
 		const nodes: ForceNode[] = initialData.nodes.map((n) => ({
@@ -118,10 +128,11 @@ export function ForceGraph({ initialData }: ForceGraphProps) {
 
 	const handleNodeClick = useCallback(
 		(node: ForceNode) => {
-			if (clickTimer.current) {
+			if (clickTimer.current && lastClickedNodeId.current === node.id) {
 				clearTimeout(clickTimer.current);
 				clickTimer.current = null;
-				// Double-click: navigate to detail page
+				lastClickedNodeId.current = null;
+				// Double-click same node: navigate to detail page
 				const [nodeType, ...keyParts] = node.id.split("__");
 				const nodeId = keyParts.join("__");
 				if (nodeType === "person") {
@@ -130,19 +141,25 @@ export function ForceGraph({ initialData }: ForceGraphProps) {
 				return;
 			}
 
+			// Clear any pending timer from a different node
+			if (clickTimer.current) {
+				clearTimeout(clickTimer.current);
+			}
+
+			lastClickedNodeId.current = node.id;
 			clickTimer.current = setTimeout(async () => {
 				clickTimer.current = null;
+				lastClickedNodeId.current = null;
 				// Single-click: expand 1-hop subgraph
 				if (expandedIds.current.has(node.id) || loading) return;
-				expandedIds.current.add(node.id);
 
 				const [nodeType, ...keyParts] = node.id.split("__");
 				const nodeId = keyParts.join("__");
 
-				// Person uses Postgres ID directly; others need lookup
-				// For simplicity, only expand person nodes (most useful for demo)
+				// Only expand person nodes (others need lookup not yet implemented)
 				if (nodeType !== "person") return;
 
+				expandedIds.current.add(node.id);
 				setLoading(true);
 				try {
 					const subgraph = await fetchEgoGraph(nodeType, nodeId, 1);
@@ -152,11 +169,11 @@ export function ForceGraph({ initialData }: ForceGraphProps) {
 							subgraph,
 							initialData.center_id,
 						);
-						setTruncated(merged.truncated);
+						setTruncated((prev) => prev || merged.truncated);
 						return { nodes: merged.nodes, links: merged.links };
 					});
 				} catch {
-					// Silently fail — node just won't expand
+					expandedIds.current.delete(node.id);
 				} finally {
 					setLoading(false);
 				}
@@ -166,6 +183,11 @@ export function ForceGraph({ initialData }: ForceGraphProps) {
 	);
 
 	const handleReset = useCallback(() => {
+		if (clickTimer.current) {
+			clearTimeout(clickTimer.current);
+			clickTimer.current = null;
+		}
+		lastClickedNodeId.current = null;
 		expandedIds.current.clear();
 		setGraphData(initialForceData);
 		setTruncated(initialData.truncated);
@@ -204,11 +226,12 @@ export function ForceGraph({ initialData }: ForceGraphProps) {
 	const nodeLabel = useCallback((node: object) => {
 		const n = node as ForceNode;
 		const meta = n.metadata;
-		const parts = [n.label, `Type: ${n.type}`];
+		const parts = [escapeHtml(n.label), `Type: ${escapeHtml(n.type)}`];
 		if (meta.citation_count != null)
 			parts.push(`Citations: ${meta.citation_count}`);
 		if (meta.stars != null) parts.push(`Stars: ${meta.stars}`);
-		if (meta.name && meta.name !== n.label) parts.push(`Name: ${meta.name}`);
+		if (meta.name && meta.name !== n.label)
+			parts.push(`Name: ${escapeHtml(String(meta.name))}`);
 		return parts.join("\n");
 	}, []);
 

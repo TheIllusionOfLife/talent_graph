@@ -96,5 +96,4 @@ class TestLookalikeSuccess:
         assert response.status_code == 200
         # search_similar is called with limit+1 to account for self-exclusion
         mock_search.assert_called_once()
-        call_args = mock_search.call_args
-        assert call_args[1].get("limit") == 6 or call_args[0][2] == 6  # positional or kwarg
+        assert mock_search.call_args.kwargs["limit"] == 6

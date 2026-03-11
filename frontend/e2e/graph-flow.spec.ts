@@ -22,10 +22,7 @@ test.describe("Lookalike page flow", () => {
 });
 
 test.describe("Person detail page graph links", () => {
-	test("person page shows View Graph and Find Lookalikes buttons", async ({
-		page,
-	}) => {
-		// This test will fail if the API is not running, but it verifies the page renders
+	test("person page renders", async ({ page }) => {
 		await page.goto("/person/test-id");
 		await expect(page.locator("body")).toBeVisible();
 	});

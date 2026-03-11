@@ -60,16 +60,17 @@ async def get_lookalikes(
     """Find persons with similar embeddings to the given person."""
     async with get_db_session() as session:
         person = await session.get(Person, person_id)
+        if person is None:
+            raise HTTPException(status_code=404, detail="Person not found")
 
-    if person is None:
-        raise HTTPException(status_code=404, detail="Person not found")
+        if person.embedding is None:
+            return LookalikeResponse(person_id=person_id, results=[])
 
-    if person.embedding is None:
-        return LookalikeResponse(person_id=person_id, results=[])
-
-    # Fetch limit+1 to account for self being in results
-    async with get_db_session() as session:
-        rows = await search_similar(session, list(person.embedding), limit=limit + 1)
+        # Fetch limit+1 to account for self being in results
+        try:
+            rows = await search_similar(session, list(person.embedding), limit=limit + 1)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail="Vector search unavailable") from exc
 
     results = _build_results(rows, exclude_id=person_id)
     return LookalikeResponse(person_id=person_id, results=results[:limit])
