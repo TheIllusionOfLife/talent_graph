@@ -3,9 +3,11 @@
 import type {
 	AdminStats,
 	DiscoveryResponse,
+	EgoGraphResponse,
 	EntityLinkOut,
 	EntityLinkPage,
 	EntityLinkStatus,
+	LookalikeResponse,
 	PersonBrief,
 	PersonDetail,
 	RankMode,
@@ -179,4 +181,27 @@ export async function createSavedSearch(
 
 export async function deleteSavedSearch(id: string): Promise<void> {
 	await apiFetch<void>(`/searches/${id}`, { method: "DELETE" });
+}
+
+// ── Graph visualization ──────────────────────────────────────────────────
+
+export async function fetchEgoGraph(
+	nodeType: string,
+	nodeId: string,
+	hops = 2,
+): Promise<EgoGraphResponse> {
+	const params = new URLSearchParams({ hops: String(hops) });
+	return apiFetch<EgoGraphResponse>(
+		`/graph/ego/${nodeType}/${nodeId}?${params}`,
+	);
+}
+
+// ── Lookalike discovery ──────────────────────────────────────────────────
+
+export async function fetchLookalikes(
+	personId: string,
+	limit = 10,
+): Promise<LookalikeResponse> {
+	const params = new URLSearchParams({ limit: String(limit) });
+	return apiFetch<LookalikeResponse>(`/lookalike/${personId}?${params}`);
 }

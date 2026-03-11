@@ -68,6 +68,18 @@ export default async function PersonPage({
 						<div className="flex items-center gap-2">
 							<AddToShortlistButton personId={person.id} />
 							<Link
+								href={`/graph/person/${person.id}`}
+								className="px-3 py-1.5 bg-purple-600 text-white rounded text-sm font-medium hover:bg-purple-700"
+							>
+								View Graph
+							</Link>
+							<Link
+								href={`/lookalike/${person.id}`}
+								className="px-3 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700"
+							>
+								Find Lookalikes
+							</Link>
+							<Link
 								href={`/discovery/person/${person.id}`}
 								className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700"
 							>
