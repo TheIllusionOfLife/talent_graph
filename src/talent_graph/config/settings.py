@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # CORS (JSON array in env var, e.g., CORS_ORIGINS='["http://localhost:3000"]')
     cors_origins: list[str] = Field(default=["http://localhost:3000"])
 
+    # Environment
+    environment: str = Field(default="development")
+
     # Logging
     log_level: str = Field(default="INFO")
     log_format: str = Field(default="json")  # "json" | "text"
