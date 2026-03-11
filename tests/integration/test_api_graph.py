@@ -78,7 +78,11 @@ class TestEgoGraphSuccess:
                         "type": "Paper",
                         "node_key": "W123",
                         "label": "Test Paper",
-                        "props": {"openalex_work_id": "W123", "title": "Test Paper", "citation_count": 5},
+                        "props": {
+                            "openalex_work_id": "W123",
+                            "title": "Test Paper",
+                            "citation_count": 5,
+                        },
                     },
                 ],
                 "links": [

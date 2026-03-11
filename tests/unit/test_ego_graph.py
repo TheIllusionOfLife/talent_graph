@@ -1,11 +1,9 @@
 """Unit tests for ego-graph helpers: compound ID generation, node config, edge canonicalization."""
 
-import pytest
-
 from talent_graph.api.routes.graph import (
+    _NODE_CONFIG,
     _build_compound_id,
     _canonicalize_links,
-    _NODE_CONFIG,
     _transform_results,
 )
 
@@ -32,7 +30,10 @@ class TestBuildCompoundId:
         assert _build_compound_id("Person", "abc123") == "person__abc123"
 
     def test_paper_id(self) -> None:
-        assert _build_compound_id("Paper", "https://openalex.org/W123") == "paper__https://openalex.org/W123"
+        assert (
+            _build_compound_id("Paper", "https://openalex.org/W123")
+            == "paper__https://openalex.org/W123"
+        )
 
     def test_repo_id(self) -> None:
         assert _build_compound_id("Repo", "owner/repo") == "repo__owner/repo"
