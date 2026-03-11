@@ -1,4 +1,4 @@
-.PHONY: db db-stop db-down db-reset migrate migrate-new migrate-down seed seed-github refresh eval api frontend mlx-server test test-unit test-integration lint format typecheck install help
+.PHONY: db db-stop db-down db-reset migrate migrate-new migrate-down seed seed-github refresh embed generate-edges eval api frontend mlx-server test test-unit test-integration lint format typecheck install help
 
 # ─── Infrastructure ───────────────────────────────────────────────────────────
 
@@ -43,13 +43,20 @@ mlx-server:
 # ─── Data ─────────────────────────────────────────────────────────────────────
 
 seed:
-	uv run python -m talent_graph.scripts.seed_ingest --source all --query "multimodal dialogue"
+	uv run python -m talent_graph.scripts.seed_ingest --source all --query "multimodal dialogue" "graph neural networks"
 
 seed-github:
 	uv run python -m talent_graph.scripts.seed_ingest --source github
 
 refresh:
-	uv run python -m talent_graph.scripts.seed_ingest --source all --query "multimodal dialogue"
+	uv run python -m talent_graph.scripts.seed_ingest --source all --query "multimodal dialogue" "graph neural networks"
+
+embed:
+	uv run python -m talent_graph.scripts.embed
+
+generate-edges:
+	uv run python -m talent_graph.scripts.generate_similar_edges --threshold 0.7 --top-k 5
+	uv run python -m talent_graph.scripts.generate_expert_edges --min-papers 3
 
 eval:
 	uv run python -m talent_graph.scripts.evaluate --api-key "$${API_KEY:-change-me-in-production}"

@@ -11,7 +11,7 @@ from tests.factories import PersonFactory
 
 @pytest.mark.asyncio
 async def test_search_requires_auth(api_client: AsyncClient) -> None:
-    response = await api_client.get("/search?q=machine+learning", headers={"X-API-Key": "bad"})
+    response = await api_client.get("/search?q=machine+learning", headers={"X-API-Key": ""})
     assert response.status_code == 401
 
 

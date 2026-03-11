@@ -14,6 +14,7 @@ from talent_graph.storage.models import (
     Org,
     Paper,
     Person,
+    RankingSignal,
     Shortlist,
     ShortlistItem,
 )
@@ -107,3 +108,15 @@ class ShortlistItemFactory(factory.Factory):
     person_id = None
     note = None
     position = 0
+
+
+class RankingSignalFactory(factory.Factory):
+    class Meta:
+        model = RankingSignal
+
+    id = LazyFunction(lambda: f"rs_{new_id()}")
+    person_id = None  # must be set by caller
+    query = ""
+    action = "save"
+    context = None
+    owner_key = "default_owner_hash"

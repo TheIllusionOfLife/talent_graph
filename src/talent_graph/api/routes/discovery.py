@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from starlette.requests import Request
 
-from talent_graph.api.deps import require_api_key
+from talent_graph.api.deps import require_user_key
 from talent_graph.api.limiter import limiter
 from talent_graph.embeddings.generator import encode_one_async
 from talent_graph.embeddings.text_builder import build_person_text, build_query_text
@@ -157,7 +157,7 @@ async def _resolve_seed(entity_type: str, entity_id: str) -> tuple[str | None, s
 @router.get(
     "/{entity_type}/{entity_id}",
     response_model=DiscoveryResponse,
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_user_key)],
 )
 @limiter.limit("20/minute")
 async def discover_candidates(

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from starlette.requests import Request
 
-from talent_graph.api.deps import require_api_key
+from talent_graph.api.deps import require_user_key
 from talent_graph.api.limiter import limiter
 from talent_graph.graph.neo4j_client import run_query
 from talent_graph.storage.models import Concept, Org, Paper, Person, Repo
@@ -181,7 +181,7 @@ def _transform_results(raw: dict[str, Any], center_id: str) -> EgoGraphResponse:
 @router.get(
     "/ego/{node_type}/{node_id}",
     response_model=EgoGraphResponse,
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_user_key)],
 )
 @limiter.limit("30/minute")
 async def get_ego_graph(

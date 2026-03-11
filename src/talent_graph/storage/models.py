@@ -206,6 +206,29 @@ class ShortlistItem(Base):
     person: Mapped["Person"] = relationship("Person")
 
 
+class RankingSignal(Base):
+    """Learning to Rank: tracks save/discard actions for future ML ranking."""
+
+    __tablename__ = "ranking_signals"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    person_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("persons.id"), nullable=False, index=True
+    )
+    query: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    action: Mapped[str] = mapped_column(
+        String(32),
+        CheckConstraint(
+            "action IN ('save', 'discard', 'shortlist', 'remove')",
+            name="ck_ranking_signals_action",
+        ),
+        nullable=False,
+    )
+    context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    owner_key: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class SavedSearch(Base):
     """A persisted search query with optional filters, owned by an API key."""
 

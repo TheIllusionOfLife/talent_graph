@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from starlette.requests import Request
 
-from talent_graph.api.deps import require_api_key
+from talent_graph.api.deps import require_user_key
 from talent_graph.api.limiter import limiter
 from talent_graph.storage.models import Person
 from talent_graph.storage.postgres import get_db_session
@@ -49,7 +49,7 @@ def _build_results(rows: list[dict], exclude_id: str) -> list[LookalikeResult]:
 @router.get(
     "/{person_id}",
     response_model=LookalikeResponse,
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_user_key)],
 )
 @limiter.limit("30/minute")
 async def get_lookalikes(

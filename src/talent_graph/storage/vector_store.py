@@ -1,6 +1,6 @@
 """pgvector operations for person embeddings."""
 
-from sqlalchemy import select, update
+from sqlalchemy import Select, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from talent_graph.storage.models import Person
@@ -43,3 +43,28 @@ async def search_similar(
         .limit(limit)
     )
     return [{"id": row.id, "name": row.name, "distance": row.distance} for row in result]
+
+
+def _build_name_query(query: str, limit: int = 20) -> Select:
+    """Build a SQL query for ILIKE name search (text fallback)."""
+    escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    pattern = f"%{escaped}%"
+    return (
+        select(Person.id, Person.name)
+        .where(Person.name.ilike(pattern, escape="\\"))
+        .order_by(Person.name)
+        .limit(limit)
+    )
+
+
+async def search_by_name(
+    session: AsyncSession,
+    query: str,
+    limit: int = 20,
+) -> list[dict]:
+    """Fallback text search: ILIKE on person name.
+
+    Returns list of dicts with keys: id, name, distance (fixed at 0.5 for compatibility).
+    """
+    result = await session.execute(_build_name_query(query, limit))
+    return [{"id": row.id, "name": row.name, "distance": 0.5} for row in result]

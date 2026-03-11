@@ -22,15 +22,16 @@ _DEFAULT_GITHUB_REPOS = [
 
 async def run(
     source: str,
-    query: str,
+    queries: list[str],
     max_results: int,
     github_repos: list[str],
     skip_embeddings: bool,
     skip_anomaly: bool,
 ) -> None:
     if source in ("openalex", "all"):
-        counts = await ingest_openalex(query=query, max_results=max_results)
-        log.info("seed.openalex.done", **counts)
+        for query in queries:
+            counts = await ingest_openalex(query=query, max_results=max_results)
+            log.info("seed.openalex.done", query=query, **counts)
 
     if source in ("github", "all"):
         gh_counts = await ingest_github(repos=github_repos)
@@ -61,7 +62,12 @@ def main() -> None:
         default="all",
         help="Data source to ingest (default: all)",
     )
-    parser.add_argument("--query", default="multimodal dialogue", help="OpenAlex search query")
+    parser.add_argument(
+        "--query",
+        nargs="+",
+        default=["multimodal dialogue"],
+        help="OpenAlex search queries (supports multiple)",
+    )
     parser.add_argument("--max-results", type=int, default=100, help="Maximum OpenAlex records")
     parser.add_argument(
         "--github-repos",
@@ -83,7 +89,7 @@ def main() -> None:
     asyncio.run(
         run(
             source=args.source,
-            query=args.query,
+            queries=args.query,
             max_results=args.max_results,
             github_repos=args.github_repos,
             skip_embeddings=args.skip_embeddings,

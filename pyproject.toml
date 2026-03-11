@@ -65,13 +65,5 @@ warn_return_any = true
 no_strict_optional = false
 
 [[tool.mypy.overrides]]
-module = "talent_graph.api.*"
-disallow_untyped_defs = true
-
-[[tool.mypy.overrides]]
-module = "talent_graph.ingestion.*"
-disallow_untyped_defs = true
-
-[[tool.mypy.overrides]]
-module = "talent_graph.storage.*"
+module = "talent_graph.*"
 disallow_untyped_defs = true

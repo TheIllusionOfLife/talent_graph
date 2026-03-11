@@ -4,12 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from starlette.requests import Request
 
-from talent_graph.api.deps import require_api_key
+from talent_graph.api.deps import require_user_key
 from talent_graph.api.limiter import limiter
 from talent_graph.embeddings.generator import encode_one_async
 from talent_graph.embeddings.text_builder import build_query_text
 from talent_graph.storage.postgres import get_db_session
-from talent_graph.storage.vector_store import search_similar
+from talent_graph.storage.vector_store import search_by_name, search_similar
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -25,7 +25,7 @@ class SearchResponse(BaseModel):
     results: list[SearchResult]
 
 
-@router.get("", response_model=SearchResponse, dependencies=[Depends(require_api_key)])
+@router.get("", response_model=SearchResponse, dependencies=[Depends(require_user_key)])
 @limiter.limit("30/minute")
 async def search_persons(
     request: Request,
@@ -40,6 +40,11 @@ async def search_persons(
 
     async with get_db_session() as session:
         rows = await search_similar(session, query_vec, limit=limit)
+
+        # Fall back to name search when vector search returns nothing
+        # (e.g. no embeddings generated yet, or query is a person name)
+        if not rows:
+            rows = await search_by_name(session, q.strip(), limit=limit)
 
     results = [
         SearchResult(

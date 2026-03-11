@@ -48,3 +48,4 @@ frontend/out/
 alembic/versions/__pycache__/
 
 .playwright-cli/
+.claude/

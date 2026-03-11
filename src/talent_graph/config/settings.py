@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -47,6 +47,18 @@ class Settings(BaseSettings):
 
     # CORS (JSON array in env var, e.g., CORS_ORIGINS='["http://localhost:3000"]')
     cors_origins: list[str] = Field(default=["http://localhost:3000"])
+
+    # Environment
+    environment: str = Field(default="development")
+
+    @field_validator("environment", mode="before")
+    @classmethod
+    def _normalize_environment(cls, v: str) -> str:
+        normalized = v.strip().lower()
+        allowed = {"development", "staging", "production"}
+        if normalized not in allowed:
+            raise ValueError(f"Invalid environment {v!r}; must be one of {sorted(allowed)}")
+        return normalized
 
     # Logging
     log_level: str = Field(default="INFO")
