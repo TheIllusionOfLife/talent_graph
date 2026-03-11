@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from starlette.requests import Request
 
-from talent_graph.api.deps import require_api_key
+from talent_graph.api.deps import require_user_key
 from talent_graph.api.limiter import limiter
 from talent_graph.explain.explanation_engine import explain_with_meta
 from talent_graph.storage.models import Person, Repo, RepoContributor
@@ -72,7 +72,7 @@ class PersonBrief(BaseModel):
     fallback: bool
 
 
-@router.get("/{person_id}", response_model=PersonDetail, dependencies=[Depends(require_api_key)])
+@router.get("/{person_id}", response_model=PersonDetail, dependencies=[Depends(require_user_key)])
 @limiter.limit("60/minute")
 async def get_person(request: Request, person_id: str) -> PersonDetail:
     """Return full person detail including papers, repos, and org."""
@@ -142,7 +142,7 @@ async def get_person(request: Request, person_id: str) -> PersonDetail:
 @router.post(
     "/{person_id}/brief",
     response_model=PersonBrief,
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_user_key)],
 )
 @limiter.limit("20/minute")
 async def get_person_brief(request: Request, person_id: str, body: BriefRequest) -> PersonBrief:

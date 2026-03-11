@@ -17,7 +17,7 @@ class TestEgoGraphAuth:
     async def test_missing_api_key_returns_401(self, api_client: AsyncClient) -> None:
         response = await api_client.get(
             "/graph/ego/person/some-id",
-            headers={"X-API-Key": "bad"},
+            headers={"X-API-Key": ""},
         )
         assert response.status_code == 401
 

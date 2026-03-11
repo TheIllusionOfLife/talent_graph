@@ -49,6 +49,11 @@ async def require_any_api_key(api_key: str | None = Security(_api_key_header)) -
     return api_key
 
 
+# RBAC aliases — admin routes require exact configured key; user routes accept any non-empty key.
+require_admin_key = require_api_key
+require_user_key = require_any_api_key
+
+
 async def require_api_key_returning(
     api_key: str | None = Security(_api_key_header),
 ) -> str:

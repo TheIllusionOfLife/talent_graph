@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from starlette.requests import Request
 
-from talent_graph.api.deps import require_api_key
+from talent_graph.api.deps import require_admin_key
 from talent_graph.api.limiter import limiter
 from talent_graph.ingestion.jobs import ingest_github, ingest_openalex
 from talent_graph.storage.models import EntityLink, Paper, Person, Repo
@@ -17,7 +17,7 @@ from talent_graph.storage.postgres import get_db_session
 
 _SLUG_RE = re.compile(r"^[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+$")
 
-router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_api_key)])
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin_key)])
 
 
 # ── Request / Response models ─────────────────────────────────────────────────
