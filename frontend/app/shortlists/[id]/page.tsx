@@ -104,6 +104,12 @@ export default function ShortlistDetailPage() {
 		return name.replace(/[/\\:*?"<>|\n\r]/g, "_").trim() || "shortlist";
 	}
 
+	function escapeCsv(value: string): string {
+		const escaped = value.replace(/"/g, '""');
+		if (/^[=+\-@\t\r]/.test(escaped)) return `'${escaped}`;
+		return escaped;
+	}
+
 	function handleExport(format: "csv" | "json") {
 		if (!shortlist) return;
 		let content: string;
@@ -112,13 +118,13 @@ export default function ShortlistDetailPage() {
 
 		if (format === "csv") {
 			const header = "Position,Name,GitHub,OpenAlex ID,Note,Added At";
-			const rows = shortlist.items
+			const rows = [...shortlist.items]
 				.sort((a, b) => a.position - b.position)
 				.map((item) => {
-					const name = `"${(item.person?.name ?? item.person_id).replace(/"/g, '""')}"`;
-					const github = item.person?.github_login ?? "";
-					const openalex = item.person?.openalex_author_id ?? "";
-					const note = `"${(item.note ?? "").replace(/"/g, '""')}"`;
+					const name = `"${escapeCsv(item.person?.name ?? item.person_id)}"`;
+					const github = escapeCsv(item.person?.github_login ?? "");
+					const openalex = escapeCsv(item.person?.openalex_author_id ?? "");
+					const note = `"${escapeCsv(item.note ?? "")}"`;
 					const addedAt = item.added_at;
 					return `${item.position},${name},${github},${openalex},${note},${addedAt}`;
 				});
@@ -240,7 +246,7 @@ export default function ShortlistDetailPage() {
 					</p>
 				) : (
 					<div className="space-y-3">
-						{shortlist.items
+						{[...shortlist.items]
 							.sort((a, b) => a.position - b.position)
 							.map((item) => (
 								<div
