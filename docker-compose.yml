@@ -41,6 +41,16 @@ services:
       retries: 10
       start_period: 60s
 
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - app
+
   app:
     build:
       context: .
@@ -55,10 +65,13 @@ services:
       API_KEY: ${API_KEY:-change-me-in-production}
       APP_SECRET: ${APP_SECRET:-change-me-in-production}
       LOG_FORMAT: json
+      RATE_LIMIT_STORAGE_URI: redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy
       neo4j:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]

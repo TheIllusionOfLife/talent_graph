@@ -206,6 +206,58 @@ async def test_remove_item(
 
 
 @pytest.mark.asyncio
+async def test_patch_item_note(
+    api_client: AsyncClient,
+    db_session_factory: async_sessionmaker,
+) -> None:
+    async with db_session_factory() as session:
+        person = PersonFactory.build(name="Hank")
+        session.add(person)
+        await session.commit()
+        person_id = person.id
+
+    create_resp = await api_client.post("/shortlists", json={"name": "Patch Test"})
+    shortlist_id = create_resp.json()["id"]
+
+    await api_client.post(f"/shortlists/{shortlist_id}/items", json={"person_id": person_id})
+
+    response = await api_client.patch(
+        f"/shortlists/{shortlist_id}/items/{person_id}",
+        json={"note": "updated note"},
+    )
+    assert response.status_code == 200
+    assert response.json()["note"] == "updated note"
+
+    # Verify persistence
+    get_resp = await api_client.get(f"/shortlists/{shortlist_id}")
+    items = get_resp.json()["items"]
+    assert any(i["note"] == "updated note" for i in items)
+
+
+@pytest.mark.asyncio
+async def test_patch_item_wrong_owner_returns_404(
+    db_session_factory: async_sessionmaker,
+) -> None:
+    async with db_session_factory() as session:
+        person = PersonFactory.build(name="Ivy")
+        session.add(person)
+        await session.commit()
+        person_id = person.id
+
+    async with _make_client(db_session_factory, api_key="test-key") as ca:
+        create_resp = await ca.post("/shortlists", json={"name": "Owner A"})
+        shortlist_id = create_resp.json()["id"]
+        await ca.post(f"/shortlists/{shortlist_id}/items", json={"person_id": person_id})
+
+    async with _make_client(db_session_factory, api_key="other-key") as cb:
+        response = await cb.patch(
+            f"/shortlists/{shortlist_id}/items/{person_id}",
+            json={"note": "hacked"},
+        )
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_remove_item_not_found_404(api_client: AsyncClient) -> None:
     create_resp = await api_client.post("/shortlists", json={"name": "No Item"})
     shortlist_id = create_resp.json()["id"]

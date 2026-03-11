@@ -1,6 +1,7 @@
 """slowapi Limiter instance and rate-limit key resolver."""
 
 import hashlib
+import os
 
 from slowapi import Limiter
 from starlette.requests import Request
@@ -22,4 +23,7 @@ def _rate_limit_key(request: Request) -> str:
     return client_host
 
 
-limiter = Limiter(key_func=_rate_limit_key)
+limiter = Limiter(
+    key_func=_rate_limit_key,
+    storage_uri=os.getenv("RATE_LIMIT_STORAGE_URI", "memory://"),
+)

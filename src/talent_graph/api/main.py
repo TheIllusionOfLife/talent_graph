@@ -8,9 +8,10 @@ import structlog
 import structlog.types
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import _rate_limit_exceeded_handler
+from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from starlette.requests import Request as StarletteRequest
 
 from talent_graph.api.limiter import limiter
 from talent_graph.api.routes import admin, health
@@ -23,6 +24,16 @@ from talent_graph.config.settings import get_settings
 from talent_graph.features.person_features import init_prestige_names
 from talent_graph.graph.neo4j_client import close_driver, run_write_query
 from talent_graph.graph.queries import CONSTRAINTS
+
+
+async def _rate_limit_handler(_request: StarletteRequest, exc: RateLimitExceeded) -> JSONResponse:
+    raw = getattr(exc, "retry_after", None)
+    retry_after = str(raw) if raw else "60"
+    return JSONResponse(
+        {"detail": f"Rate limit exceeded: {exc.detail}"},
+        status_code=429,
+        headers={"Retry-After": retry_after},
+    )
 
 
 def _configure_logging(log_format: str, log_level: str) -> None:
@@ -94,7 +105,7 @@ def create_app() -> FastAPI:
 
     app.state.limiter = limiter
     app.add_middleware(SlowAPIMiddleware)
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)  # type: ignore[arg-type]
 
     app.add_middleware(
         CORSMiddleware,

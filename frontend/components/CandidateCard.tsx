@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { addToShortlist, listShortlists } from "@/lib/api";
-import type { CandidateResult, ShortlistSummary } from "@/types";
+import { AddToShortlistButton } from "@/components/AddToShortlistButton";
+import { getPersonBrief } from "@/lib/api";
+import type { CandidateResult } from "@/types";
 
 interface CandidateCardProps {
 	candidate: CandidateResult;
@@ -35,38 +36,21 @@ function ScoreBar({ value }: { value: number }) {
 }
 
 export function CandidateCard({ candidate, seedText }: CandidateCardProps) {
-	const [shortlists, setShortlists] = useState<ShortlistSummary[] | null>(null);
-	const [showDropdown, setShowDropdown] = useState(false);
-	const [adding, setAdding] = useState<string | null>(null);
-	const [added, setAdded] = useState<string | null>(null);
-	const [addError, setAddError] = useState<string | null>(null);
+	const [explaining, setExplaining] = useState(false);
+	const [explainResult, setExplainResult] = useState<string | null>(null);
+	const [explainError, setExplainError] = useState<string | null>(null);
 
-	async function handleOpenDropdown() {
-		if (!shortlists) {
-			try {
-				const data = await listShortlists();
-				setShortlists(data);
-			} catch (e) {
-				setAddError(
-					e instanceof Error ? e.message : "Failed to load shortlists",
-				);
-				setShortlists([]);
-			}
-		}
-		setShowDropdown((v) => !v);
-	}
-
-	async function handleAdd(shortlistId: string) {
-		setAdding(shortlistId);
-		setAddError(null);
+	async function handleExplain() {
+		if (!seedText) return;
+		setExplaining(true);
+		setExplainError(null);
 		try {
-			await addToShortlist(shortlistId, candidate.id);
-			setAdded(shortlistId);
-		} catch (e: unknown) {
-			setAddError(e instanceof Error ? e.message : "Failed");
+			const brief = await getPersonBrief(candidate.id, seedText);
+			setExplainResult(brief.explanation);
+		} catch (e) {
+			setExplainError(e instanceof Error ? e.message : "Failed");
 		} finally {
-			setAdding(null);
-			setShowDropdown(false);
+			setExplaining(false);
 		}
 	}
 
@@ -92,45 +76,7 @@ export function CandidateCard({ candidate, seedText }: CandidateCardProps) {
 					<span className="text-lg font-bold text-blue-700">
 						{Math.round(candidate.score * 100)}
 					</span>
-					<div className="relative">
-						<button
-							type="button"
-							onClick={handleOpenDropdown}
-							className="text-xs px-2 py-1 border border-gray-200 rounded hover:bg-gray-50 text-gray-600"
-							title="Add to shortlist"
-						>
-							{added ? "✓" : "+ List"}
-						</button>
-						{showDropdown && (
-							<div className="absolute right-0 top-7 z-10 bg-white border border-gray-200 rounded shadow-md min-w-40">
-								{shortlists === null ? (
-									<p className="text-xs text-gray-400 p-2">Loading…</p>
-								) : shortlists.length === 0 ? (
-									<p className="text-xs text-gray-400 p-2">
-										No shortlists.{" "}
-										<Link
-											href="/shortlists"
-											className="text-blue-500 underline"
-										>
-											Create one
-										</Link>
-									</p>
-								) : (
-									shortlists.map((sl) => (
-										<button
-											key={sl.id}
-											type="button"
-											disabled={adding === sl.id}
-											onClick={() => handleAdd(sl.id)}
-											className="w-full text-left text-xs px-3 py-2 hover:bg-gray-50 text-gray-700 truncate"
-										>
-											{adding === sl.id ? "Adding…" : sl.name}
-										</button>
-									))
-								)}
-							</div>
-						)}
-					</div>
+					<AddToShortlistButton personId={candidate.id} />
 				</div>
 			</div>
 
@@ -140,7 +86,24 @@ export function CandidateCard({ candidate, seedText }: CandidateCardProps) {
 				</p>
 			)}
 
-			{addError && <p className="text-xs text-red-400 mb-2">{addError}</p>}
+			{!candidate.explanation && !explainResult && seedText && (
+				<button
+					type="button"
+					onClick={handleExplain}
+					disabled={explaining}
+					className="text-xs text-blue-500 hover:underline disabled:text-gray-400 mb-3"
+				>
+					{explaining ? "Explaining…" : "Explain"}
+				</button>
+			)}
+			{explainResult && (
+				<p className="text-xs text-gray-600 italic mb-3 border-l-2 border-blue-200 pl-2">
+					{explainResult}
+				</p>
+			)}
+			{explainError && (
+				<p className="text-xs text-red-400 mb-2">{explainError}</p>
+			)}
 
 			<div className="space-y-1.5">
 				{Object.entries(candidate.breakdown).map(([key, val]) => (

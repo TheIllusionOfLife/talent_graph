@@ -250,6 +250,131 @@ class TestShortlistCRUD:
                     json={"person_id": "person_001"},
                 )
 
+    def test_patch_item_note_only(self):
+        client = self._get_client()
+        sl = _make_shortlist()
+        mock_item = MagicMock()
+        mock_item.person_id = "person_001"
+        mock_item.note = "old note"
+        mock_item.position = 0
+        mock_item.added_at = datetime(2025, 1, 1)
+        mock_item.person = MagicMock()
+        mock_item.person.id = "person_001"
+        mock_item.person.name = "Alice"
+        mock_item.person.openalex_author_id = None
+        mock_item.person.github_login = None
+
+        with patch("talent_graph.api.routes.shortlist.get_db_session") as mock_ctx:
+            mock_session = AsyncMock()
+            sl_result = MagicMock()
+            sl_result.scalar_one_or_none = MagicMock(return_value=sl)
+            item_result = MagicMock()
+            item_result.scalar_one_or_none = MagicMock(return_value=mock_item)
+            mock_session.execute = AsyncMock(side_effect=[sl_result, item_result])
+            mock_ctx.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            response = client.patch(
+                f"/shortlists/{sl.id}/items/person_001",
+                json={"note": "updated note"},
+            )
+        assert response.status_code == 200
+
+    def test_patch_item_position_only(self):
+        client = self._get_client()
+        sl = _make_shortlist()
+        mock_item = MagicMock()
+        mock_item.person_id = "person_001"
+        mock_item.note = None
+        mock_item.position = 0
+        mock_item.added_at = datetime(2025, 1, 1)
+        mock_item.person = MagicMock()
+        mock_item.person.id = "person_001"
+        mock_item.person.name = "Alice"
+        mock_item.person.openalex_author_id = None
+        mock_item.person.github_login = None
+
+        with patch("talent_graph.api.routes.shortlist.get_db_session") as mock_ctx:
+            mock_session = AsyncMock()
+            sl_result = MagicMock()
+            sl_result.scalar_one_or_none = MagicMock(return_value=sl)
+            item_result = MagicMock()
+            item_result.scalar_one_or_none = MagicMock(return_value=mock_item)
+            mock_session.execute = AsyncMock(side_effect=[sl_result, item_result])
+            mock_ctx.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            response = client.patch(
+                f"/shortlists/{sl.id}/items/person_001",
+                json={"position": 5},
+            )
+        assert response.status_code == 200
+
+    def test_patch_item_noop_empty_body(self):
+        client = self._get_client()
+        sl = _make_shortlist()
+        mock_item = MagicMock()
+        mock_item.person_id = "person_001"
+        mock_item.note = "existing"
+        mock_item.position = 0
+        mock_item.added_at = datetime(2025, 1, 1)
+        mock_item.person = MagicMock()
+        mock_item.person.id = "person_001"
+        mock_item.person.name = "Alice"
+        mock_item.person.openalex_author_id = None
+        mock_item.person.github_login = None
+
+        with patch("talent_graph.api.routes.shortlist.get_db_session") as mock_ctx:
+            mock_session = AsyncMock()
+            sl_result = MagicMock()
+            sl_result.scalar_one_or_none = MagicMock(return_value=sl)
+            item_result = MagicMock()
+            item_result.scalar_one_or_none = MagicMock(return_value=mock_item)
+            mock_session.execute = AsyncMock(side_effect=[sl_result, item_result])
+            mock_ctx.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            response = client.patch(
+                f"/shortlists/{sl.id}/items/person_001",
+                json={},
+            )
+        assert response.status_code == 200
+
+    def test_patch_item_not_found(self):
+        client = self._get_client()
+        sl = _make_shortlist()
+
+        with patch("talent_graph.api.routes.shortlist.get_db_session") as mock_ctx:
+            mock_session = AsyncMock()
+            sl_result = MagicMock()
+            sl_result.scalar_one_or_none = MagicMock(return_value=sl)
+            item_result = MagicMock()
+            item_result.scalar_one_or_none = MagicMock(return_value=None)
+            mock_session.execute = AsyncMock(side_effect=[sl_result, item_result])
+            mock_ctx.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            response = client.patch(
+                f"/shortlists/{sl.id}/items/nonexistent",
+                json={"note": "test"},
+            )
+        assert response.status_code == 404
+
+    def test_patch_item_wrong_owner_returns_404(self):
+        client = self._get_client()
+
+        with patch("talent_graph.api.routes.shortlist.get_db_session") as mock_ctx:
+            mock_session = AsyncMock()
+            mock_session.execute = _execute_returning(None)
+            mock_ctx.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            response = client.patch(
+                "/shortlists/some-id/items/person_001",
+                json={"note": "test"},
+            )
+        assert response.status_code == 404
+
     def test_remove_item_from_shortlist(self):
         client = self._get_client()
         sl = _make_shortlist()
