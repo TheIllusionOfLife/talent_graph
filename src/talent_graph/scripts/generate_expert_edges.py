@@ -69,31 +69,24 @@ async def _load_person_concept_pairs() -> list[dict[str, object]]:
             if concepts:
                 paper_concepts_map[paper_id] = concepts
 
-        # Also get concept openalex_id → concept.id mapping
-        all_concept_names = set()
+        # Paper.concepts stores openalex_concept_id values (e.g. "C154945302").
+        # Validate they exist in the Concept table.
+        all_concept_ids: set[str] = set()
         for concepts in paper_concepts_map.values():
-            all_concept_names.update(concepts)
+            all_concept_ids.update(concepts)
 
-        # Build (person_id, concept_name) pairs
-        # Note: Paper.concepts stores concept names as strings (ARRAY(String))
-        # We use the concept name directly as concept_id for the Cypher query
-        # which matches on openalex_concept_id. Let's resolve via Concept table.
         concept_result2 = await session.execute(
-            select(Concept.name, Concept.openalex_concept_id).where(
-                Concept.name.in_(list(all_concept_names))
+            select(Concept.openalex_concept_id).where(
+                Concept.openalex_concept_id.in_(list(all_concept_ids))
             )
         )
-        name_to_id: dict[str, str] = {}
-        for name, oa_id in concept_result2:
-            if oa_id:
-                name_to_id[name] = oa_id
+        valid_concept_ids: set[str] = {row[0] for row in concept_result2 if row[0]}
 
     pairs: list[dict[str, object]] = []
     for pa in paper_authors:
         concepts = paper_concepts_map.get(pa.paper_id, [])
-        for concept_name in concepts:
-            concept_id = name_to_id.get(concept_name)
-            if concept_id:
+        for concept_id in concepts:
+            if concept_id in valid_concept_ids:
                 pairs.append({"person_id": pa.person_id, "concept_id": concept_id})
 
     return pairs
@@ -125,8 +118,10 @@ async def run(min_papers: int = 3) -> int:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate LIKELY_EXPERT_IN edges")
-    parser.add_argument("--min-papers", type=int, default=3, help="Min papers per concept")
+    parser.add_argument("--min-papers", type=int, default=3, help="Min papers per concept (>=1)")
     args = parser.parse_args()
+    if args.min_papers < 1:
+        parser.error("--min-papers must be >= 1")
     asyncio.run(run(min_papers=args.min_papers))
 
 

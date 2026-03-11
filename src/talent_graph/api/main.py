@@ -80,9 +80,16 @@ def create_app() -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ANN001
         _DEFAULT = "change-me-in-production"
         if settings.environment == "production":
-            if settings.api_key == _DEFAULT or settings.app_secret == _DEFAULT:
+            api_blank = not settings.api_key.strip()
+            secret_blank = not settings.app_secret.strip()
+            if (
+                settings.api_key == _DEFAULT
+                or settings.app_secret == _DEFAULT
+                or api_blank
+                or secret_blank
+            ):
                 raise RuntimeError(
-                    "Refusing to start: default API_KEY or APP_SECRET in production. "
+                    "Refusing to start: default or blank API_KEY/APP_SECRET in production. "
                     "Set real values via environment variables."
                 )
         else:

@@ -39,6 +39,10 @@ export function mergeGraphData(
 			});
 		}
 	}
+	// Recompute isCenter for all nodes (handles re-centering on existing node)
+	for (const [id, node] of nodeMap) {
+		node.isCenter = id === centerId;
+	}
 
 	const linkSet = new Set(
 		existing.links.map((l) => {

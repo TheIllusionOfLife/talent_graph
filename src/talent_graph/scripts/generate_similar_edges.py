@@ -20,7 +20,7 @@ from talent_graph.storage.postgres import get_db_session
 
 log = structlog.get_logger()
 
-_MAX_PERSONS = 10_000
+_MAX_PERSONS = 5_000
 
 
 def _compute_similar_pairs(
@@ -129,6 +129,10 @@ def main() -> None:
     parser.add_argument("--threshold", type=float, default=0.7, help="Minimum cosine similarity")
     parser.add_argument("--top-k", type=int, default=5, help="Max similar persons per person")
     args = parser.parse_args()
+    if not -1.0 <= args.threshold <= 1.0:
+        parser.error("--threshold must be between -1.0 and 1.0")
+    if args.top_k < 1:
+        parser.error("--top-k must be >= 1")
     asyncio.run(run(threshold=args.threshold, top_k=args.top_k))
 
 

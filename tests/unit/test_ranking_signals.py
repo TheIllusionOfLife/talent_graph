@@ -46,6 +46,17 @@ class TestRankingSignalModel:
         )
         assert signal.context is None
 
+    def test_query_is_nullable(self) -> None:
+        """Query field can be None (e.g. shortlist add without search context)."""
+        signal = RankingSignal(
+            id="rs_004",
+            person_id="p_jkl",
+            query=None,
+            action="save",
+            owner_key="key",
+        )
+        assert signal.query is None
+
     def test_tablename(self) -> None:
         """Model maps to ranking_signals table."""
         assert RankingSignal.__tablename__ == "ranking_signals"

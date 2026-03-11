@@ -228,7 +228,7 @@ async def add_item(
         signal = RankingSignal(
             id=f"rs_{new_id()}",
             person_id=body.person_id,
-            query="",
+            query=None,
             action="save",
             context={"shortlist_id": shortlist_id},
             owner_key=owner_hash(current_key),
@@ -313,7 +313,7 @@ async def remove_item(
         signal = RankingSignal(
             id=f"rs_{new_id()}",
             person_id=person_id,
-            query="",
+            query=None,
             action="discard",
             context={"shortlist_id": shortlist_id},
             owner_key=owner_hash(current_key),

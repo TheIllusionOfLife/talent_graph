@@ -47,10 +47,11 @@ async def search_similar(
 
 def _build_name_query(query: str, limit: int = 20) -> Select:
     """Build a SQL query for ILIKE name search (text fallback)."""
-    pattern = f"%{query}%"
+    escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    pattern = f"%{escaped}%"
     return (
         select(Person.id, Person.name)
-        .where(Person.name.ilike(pattern))
+        .where(Person.name.ilike(pattern, escape="\\"))
         .order_by(Person.name)
         .limit(limit)
     )

@@ -20,17 +20,27 @@ def upgrade() -> None:
         "ranking_signals",
         sa.Column("id", sa.String(36), primary_key=True),
         sa.Column("person_id", sa.String(36), sa.ForeignKey("persons.id"), nullable=False),
-        sa.Column("query", sa.Text, nullable=False),
-        sa.Column("action", sa.String(32), nullable=False),
+        sa.Column("query", sa.Text, nullable=True),
+        sa.Column(
+            "action",
+            sa.String(32),
+            sa.CheckConstraint(
+                "action IN ('save', 'discard', 'shortlist', 'remove')",
+                name="ck_ranking_signals_action",
+            ),
+            nullable=False,
+        ),
         sa.Column("context", JSONB, nullable=True),
         sa.Column("owner_key", sa.String(256), nullable=False),
         sa.Column("created_at", sa.DateTime, server_default=sa.text("now()"), nullable=False),
     )
     op.create_index("ix_ranking_signals_person_id", "ranking_signals", ["person_id"])
     op.create_index("ix_ranking_signals_query", "ranking_signals", ["query"])
+    op.create_index("ix_ranking_signals_owner_key", "ranking_signals", ["owner_key"])
 
 
 def downgrade() -> None:
+    op.drop_index("ix_ranking_signals_owner_key", table_name="ranking_signals")
     op.drop_index("ix_ranking_signals_query", table_name="ranking_signals")
     op.drop_index("ix_ranking_signals_person_id", table_name="ranking_signals")
     op.drop_table("ranking_signals")

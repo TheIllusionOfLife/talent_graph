@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -50,6 +50,11 @@ class Settings(BaseSettings):
 
     # Environment
     environment: str = Field(default="development")
+
+    @field_validator("environment", mode="before")
+    @classmethod
+    def _normalize_environment(cls, v: str) -> str:
+        return v.strip().lower()
 
     # Logging
     log_level: str = Field(default="INFO")

@@ -44,7 +44,7 @@ async def search_persons(
         # Fall back to name search when vector search returns nothing
         # (e.g. no embeddings generated yet, or query is a person name)
         if not rows:
-            rows = await search_by_name(session, q, limit=limit)
+            rows = await search_by_name(session, q.strip(), limit=limit)
 
     results = [
         SearchResult(

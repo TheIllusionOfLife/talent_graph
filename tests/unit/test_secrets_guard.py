@@ -1,6 +1,5 @@
 """Tests for production secrets guard — fail-fast when defaults are used."""
 
-import logging
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -100,15 +99,16 @@ class TestSecretsGuard:
                 pass  # should not raise
 
     @pytest.mark.asyncio
-    async def test_development_default_secrets_warns(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    async def test_development_default_secrets_warns(self) -> None:
         """Development mode warns but does not raise."""
         settings = _make_settings(environment="development")
+        mock_log = AsyncMock()
+        mock_log.info = AsyncMock()
+        mock_log.warning = AsyncMock()
 
         with (
-            caplog.at_level(logging.WARNING),
             patch("talent_graph.api.main.get_settings", return_value=settings),
+            patch("talent_graph.api.main.structlog.get_logger", return_value=mock_log),
             patch("talent_graph.api.main.run_write_query", new_callable=AsyncMock),
             patch(
                 "talent_graph.api.main.init_prestige_names",
@@ -122,3 +122,6 @@ class TestSecretsGuard:
             app = create_app()
             async with app.router.lifespan_context(app):
                 pass  # should not raise
+
+        warning_events = [call.args[0] for call in mock_log.warning.call_args_list]
+        assert any("insecure_default" in ev for ev in warning_events)

@@ -215,10 +215,17 @@ class RankingSignal(Base):
     person_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("persons.id"), nullable=False, index=True
     )
-    query: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    action: Mapped[str] = mapped_column(String(32), nullable=False)  # "save" | "discard"
+    query: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    action: Mapped[str] = mapped_column(
+        String(32),
+        CheckConstraint(
+            "action IN ('save', 'discard', 'shortlist', 'remove')",
+            name="ck_ranking_signals_action",
+        ),
+        nullable=False,
+    )
     context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    owner_key: Mapped[str] = mapped_column(String(256), nullable=False)
+    owner_key: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 

@@ -44,7 +44,7 @@ def sanitize_input(text: str, max_length: int = 500) -> str:
     text = text[:max_length]
     # 6. Warn on instruction patterns (telemetry only — not enforcement)
     if _INSTRUCTION_RE.search(text):
-        _log.warning("prompt_injection.suspected", snippet=text[:80])
+        _log.warning("prompt_injection.suspected", text_length=len(text))
     return text
 
 
