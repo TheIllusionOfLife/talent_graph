@@ -75,3 +75,43 @@ disallow_untyped_defs = true
 [[tool.mypy.overrides]]
 module = "talent_graph.storage.*"
 disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "talent_graph.features.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "talent_graph.entity_resolution.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "talent_graph.anomaly.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "talent_graph.explain.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "talent_graph.ranking.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "talent_graph.graph.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "talent_graph.normalize.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "talent_graph.scripts.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "talent_graph.embeddings.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "talent_graph.config.*"
+disallow_untyped_defs = true
